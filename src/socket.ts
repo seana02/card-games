@@ -1,9 +1,9 @@
 import { io, Socket } from 'socket.io-client';
-import * as types from '@backend/types';
+import * as socketTypes from '@backend/Socket';
 
 const socket: Socket<
-    types.ServerToClientEvents,
-    types.ClientToServerEvents
+    socketTypes.ServerToClientEvents,
+    socketTypes.ClientToServerEvents
 > = io('http://localhost:3000', {
     autoConnect: false
 });
