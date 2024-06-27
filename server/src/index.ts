@@ -1,15 +1,15 @@
 import { Server } from "socket.io";
-import * as types from './types/types';
+import * as socketTypes from './types/Socket';
 import express from 'express';
 
 const app = express();
 const httpServer = require('http').createServer(app);
 
 const io = new Server<
-  types.ClientToServerEvents,
-  types.ServerToClientEvents,
-  types.InterServerEvents,
-  types.SocketData
+  socketTypes.ClientToServerEvents,
+  socketTypes.ServerToClientEvents,
+  socketTypes.InterServerEvents,
+  socketTypes.SocketData
 >(httpServer, {
     cors: {
         origin: 'http://localhost:5173',
