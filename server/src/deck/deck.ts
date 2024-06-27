@@ -1,6 +1,6 @@
-enum Suit { Club, Heart, Spade, Diamond }
+export enum Suit { Club, Heart, Spade, Diamond }
 
-class Card {
+export class Card {
     private _suit: Suit;
     private _value: number; // A=1, J=11, Q=12, K=13
 
@@ -16,7 +16,7 @@ class Card {
     public get val() { return this._value; }
 }
 
-class Deck {
+export class Deck {
     private _deck: Card[];
 
     constructor(init = false) {
