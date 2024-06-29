@@ -24,10 +24,12 @@ export class Card {
         this._suit = suit;
         if (suit == Suit.Joker) {
             if (value != 0 && value != -1) {
+                throw Error("Invalid card value");
+            } else {
                 this._value = value;
             }
         } else {
-            if (value < 1 || value > 14) {
+            if (value < 1 || value > 13) {
                 throw Error("Invalid card value");
             }
             this._value = value;

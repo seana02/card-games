@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc -b",
     "dev": "tsc -b && node dist/index.js",
-    "test": "jest"
+    "test": "jest",
+    "tests": "npm run test"
   },
   "author": "",
   "license": "ISC",
