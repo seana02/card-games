@@ -36,8 +36,15 @@ export class Card {
         }
     }
 
+    public equals(other: Card): boolean {
+        return (
+            this._suit === other.suit &&
+            this._value === other.value
+        );
+    }
+
     public get suit() { return this._suit; }
-    public get val() { return this._value; }
+    public get value() { return this._value; }
 }
 
 /**
@@ -49,18 +56,24 @@ export class Deck {
     /**
       * Creates a new blank Deck.
       *
-      * @param init - Whether to initialize with 52 cards.
+      * @param init - Whether to initialize the deck with 52 cards.
+      * Defaults to false if omitted.
+      *
+      * @param jokers - Whether to include 2 jokers when initializing.
       * Defaults to false if omitted.
       */
-    constructor(init = false) {
-        if (init) this.init();
+    constructor(init = false, jokers = false) {
+        if (init) this.init(jokers);
         else this._deck = [];
     }
 
     /**
       * Initializes the {@link Deck} with a standard set of 54 cards.
+      *
+      * @param jokers - Whether to include 2 jokers.
+      * These will be added to the top of stack to be easily removable before shuffling.
       */
-    public init() {
+    public init(jokers: boolean) {
         this._deck = [];
         for (let i = 1; i <= 13; i++) {
             this._deck.push(new Card(Suit.Club, i));
@@ -68,7 +81,10 @@ export class Deck {
             this._deck.push(new Card(Suit.Spade, i));
             this._deck.push(new Card(Suit.Diamond, i));
         }
-        this._deck
+        if (jokers) {
+            this._deck.push(new Card(Suit.Joker, -1));
+            this._deck.push(new Card(Suit.Joker, 0));
+        }
     }
 
     /**
@@ -93,12 +109,20 @@ export class Deck {
     }
 
     /**
-      * Removes and returns the top of the deck.
+      * Removes and returns the specified number of cards from the top of the deck.
       *
-      * @returns the top {@link Card}, or null if the deck is empty.
+      * @param count - the maximum number of cards to draw.
+      * @returns up to the specified number of {@link Card | Cards}.
+      * May return fewer cards if the deck has fewer cards than specified.
       */
-    public draw(): Card | null {
-        return this._deck.pop();
+    public draw(count: number): Card[] | null {
+        let output = [];
+        for (let i = 0; i < count; i++) {
+            let card = this._deck.pop();
+            if (card) output.push(card);
+            else break;
+        }
+        return output;
     }
 
     /**
