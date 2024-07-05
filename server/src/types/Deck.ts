@@ -36,6 +36,14 @@ export class Card {
         }
     }
 
+    /**
+      * Function to check if a {@link Card} is equal to this one.
+      * Cards are equal if the suit and value are both the same.
+      *
+      * @param other the Card to compare to
+      * 
+      * @returns whether the cards are the same
+      */
     public equals(other: Card): boolean {
         return (
             this._suit === other.suit &&

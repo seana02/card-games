@@ -1,8 +1,9 @@
 import { Action, Player } from "types/Player";
 import { Card, Deck } from "types/Deck";
+
 enum PalaceState {
     SETTING,
-    IN_GAME
+    IN_GAME,
 }
 
 interface PalacePlayer extends Player {
@@ -13,31 +14,37 @@ interface PalacePlayer extends Player {
 }
 
 class Palace {
+    /**
+     * The socket.io room id of the game
+     */
     private _room: string;
+
     /**
      * Current state of the game
      */
     private _state : PalaceState;
+
     /**
-      * Face-down center pile to draw from.
-      */
+     * Face-down center pile to draw from.
+     */
     private _center: Deck;
+
     /**
-      * Face-up card to discard cards. These cards are not yet out of play.
-      */
+     * Face-up card to discard cards. These cards are not yet out of play.
+     */
     private _discard: Deck;
 
     private _players: PalacePlayer[];
     private _indexOf: { [uuid: string]: number }
 
     /**
-      * The index of the current PalacePlayer
-      */
+     * The index of the current PalacePlayer
+     */
     private _current: number;
 
     /**
-      * Initializes a Palace game and deals out cards.
-      */
+     * Initializes a Palace game and deals out cards.
+     */
     constructor(players: Player[]) {
         if (players.length < 1) throw Error("Requires at least 2 players");
         this._center = new Deck(true);
@@ -56,97 +63,108 @@ class Palace {
     }
     
     /**
-      * Sets up face up cards chosen by the player.
-      * Can be out of order, so requires identification.
-      *
-      * @param uuid - the uuid of the player making the choice
-      * @param i1 - first choice of face up card
-      * @param i2 - second choice of face up card
-      * @param i3 - third choice of face up card
-      *
-      * @return whether the action was successful.
-      * May be unsuccessful if duplicate or out-of-bounds cards were selected,
-      * or if the player has already chosen cards.
-      */
+     * Sets up face up cards chosen by the player.
+     * Can be out of order, so requires identification.
+     *
+     * @param uuid - the uuid of the player making the choice
+     * @param i1 - first choice of face up card
+     * @param i2 - second choice of face up card
+     * @param i3 - third choice of face up card
+     *
+     * @return whether the action was successful.
+     * May be unsuccessful if duplicate or out-of-bounds cards were selected,
+     * or if the player has already chosen cards.
+     */
     public revealCards(uuid: string, i1: number, i2: number, i3: number): boolean {
         // ensure that 0 <= i1 < i2 < i3 < 6
-        if (i1 < 0 || i2 < 0 || i3 < 0 ||
-            i1 == i2 || i1 == i3 || i2 == i3 ||
-            i1 > 6 || i2 > 6 || i3 > 6) return false;
-        [i1, i2, i3] = [i1, i2, i3].sort((a,b) => a-b);
+        if (this.checkValidIndices(uuid, [i1, i2, i3])) return false;
+        [i1, i2, i3] = [i1, i2, i3].sort((a,b) => b-a);
 
         // If the player already made their choice, don't try again
         if (this._players[this._indexOf[uuid]].ready) return false;
 
         let player: PalacePlayer = this._players[this._indexOf[uuid]];
         // highest index first to avoid position shifting
-        player.revealed.push(player.hand.splice(i3)[0]);
-        player.revealed.push(player.hand.splice(i2)[0]);
         player.revealed.push(player.hand.splice(i1)[0]);
+        player.revealed.push(player.hand.splice(i2)[0]);
+        player.revealed.push(player.hand.splice(i3)[0]);
         player.ready = true;
-        for (let i of this._players) {
-          if (!i.ready) {
-            return true;
-          }
-        }
+        this._players.forEach(i => {
+            if (!i.ready) return true;
+        });
         this._state = PalaceState.IN_GAME;
         return true;
     }
+
+    /**
+     * Determines and goes to the next player
+     */
+    public nextPlayer() {
+        this._current = (this._current + 1) % this._players.length;
+    }
+
     /**
      * Plays a set of cards for a player
+     *
      * @param uuid player to play
      * @param cards set of cards played
      * @returns if successful, true
      */
     public playCards(uuid: string, cards: number[]): boolean {
-      if (this._indexOf[uuid] !== this._current) {
-        return false;
-      }
-
-      let first_card = cards[0];
-      cards.forEach((val, i) => {
-        if (this._players[this._current].hand[val].value !== this._players[this._current].hand[first_card].value) {
-          return false;
+        if (this._indexOf[uuid] !== this._current) {
+            return false;
         }
-      })
-      if (!this.checkValidIndices(uuid, cards)) return false;
-      cards.sort((a, b) => (b - a));
-      for (let i of cards) {
-        this._center.add(this._players[this._current].hand.splice(i)[0])
-      }
-      this._current = (this._current + 1) % this._players.length;
 
-      return true;
+        let playerHand = this._players[this._current].hand;
+        cards.forEach(val => {
+            if (playerHand[val].value !== playerHand[cards[0]].value) {
+                return false;
+            }
+        });
+
+        if (!this.checkValidIndices(uuid, cards)) return false;
+
+        cards.sort((a, b) => (b - a));
+
+        cards.forEach(i => this._center.add(playerHand.splice(i)[0]) );
+
+        this.nextPlayer();
+
+        return true;
     }
+
     /**
      * Verifies that list of cards is a subset of the player's deck
+     *
      * @param uuid player in question
-     * @param cards set of cards
+     * @param indeces set of cards
      * @returns validity
      */
-    private checkValidIndices(uuid: string, cards: number[]) : boolean  {
-      let hand_length  = this._players[this._indexOf[uuid]].hand.length;
-      if (cards.length > hand_length) return false;
-      let hashmap : boolean[] = Array(hand_length);
-      hashmap.fill(false);
-      cards.forEach((i) => {
-        if (i < 0 || i >= hand_length) return false;
-        if (hashmap[i]) return false;
-        hashmap[i] = true;
-      })
-      return true;
+    private checkValidIndices(uuid: string, indeces: number[]) : boolean  {
+        // if there are too many cards specified, it is invalid
+        let hand_length  = this._players[this._indexOf[uuid]].hand.length;
+        if (indeces.length > hand_length) return false;
+
+        // if there are duplicate indices, is it invalid
+        let map : boolean[] = Array(hand_length).fill(false);
+        indeces.forEach(i => {
+            if (i < 0 || i >= hand_length || map[i]) return false;
+            map[i] = true;
+        });
+        return true;
     }
+
     /**
      * Takes from the deck
      * @param uuid player to take
      */
     public takeCards(uuid: string) : boolean {
-      if (this._indexOf[uuid] != this._current) {
-        return false;
-      }
-      this._players[this._current].hand.push(...this._center.cards);
-      this._center.clear();
-      return true;
+        if (this._indexOf[uuid] != this._current) {
+            return false;
+        }
+        this._players[this._current].hand.push(...this._center.cards);
+        this._center.clear();
+        return true;
     }
 }
 

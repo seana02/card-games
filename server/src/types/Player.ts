@@ -1,5 +1,5 @@
 import { Socket } from 'socket.io';
-import {Card} from './Deck'
+import { Card } from './Deck'
 
 export type Player = {
     uuid: string;
