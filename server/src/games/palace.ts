@@ -1,6 +1,9 @@
-import { Player } from "types/Player";
-import { Card, Deck } from "deck/deck";
-
+import { Action, Player } from "types/Player";
+import { Card, Deck } from "types/Deck";
+enum PalaceState {
+    SETTING,
+    IN_GAME
+}
 
 interface PalacePlayer extends Player {
     hidden: Card[],
@@ -10,6 +13,11 @@ interface PalacePlayer extends Player {
 }
 
 class Palace {
+    private _room: string;
+    /**
+     * Current state of the game
+     */
+    private _state : PalaceState;
     /**
       * Face-down center pile to draw from.
       */
@@ -34,6 +42,7 @@ class Palace {
         if (players.length < 1) throw Error("Requires at least 2 players");
         this._center = new Deck(true);
         this._center.shuffle();
+        this._state = PalaceState.SETTING;
         for (let i = 0; i < players.length; i++) {
             this._indexOf[players[i].uuid] = i;
             this._players.push({
@@ -45,7 +54,7 @@ class Palace {
             });
         }
     }
-
+    
     /**
       * Sets up face up cards chosen by the player.
       * Can be out of order, so requires identification.
@@ -75,9 +84,70 @@ class Palace {
         player.revealed.push(player.hand.splice(i2)[0]);
         player.revealed.push(player.hand.splice(i1)[0]);
         player.ready = true;
+        for (let i of this._players) {
+          if (!i.ready) {
+            return true;
+          }
+        }
+        this._state = PalaceState.IN_GAME;
         return true;
     }
+    /**
+     * Plays a set of cards for a player
+     * @param uuid player to play
+     * @param cards set of cards played
+     * @returns if successful, true
+     */
+    public playCards(uuid: string, cards: number[]): boolean {
+      if (this._indexOf[uuid] !== this._current) {
+        return false;
+      }
 
+      let first_card = cards[0];
+      cards.forEach((val, i) => {
+        if (this._players[this._current].hand[val].value !== this._players[this._current].hand[first_card].value) {
+          return false;
+        }
+      })
+      if (!this.checkValidIndices(uuid, cards)) return false;
+      cards.sort((a, b) => (b - a));
+      for (let i of cards) {
+        this._center.add(this._players[this._current].hand.splice(i)[0])
+      }
+      this._current = (this._current + 1) % this._players.length;
+
+      return true;
+    }
+    /**
+     * Verifies that list of cards is a subset of the player's deck
+     * @param uuid player in question
+     * @param cards set of cards
+     * @returns validity
+     */
+    private checkValidIndices(uuid: string, cards: number[]) : boolean  {
+      let hand_length  = this._players[this._indexOf[uuid]].hand.length;
+      if (cards.length > hand_length) return false;
+      let hashmap : boolean[] = Array(hand_length);
+      hashmap.fill(false);
+      cards.forEach((i) => {
+        if (i < 0 || i >= hand_length) return false;
+        if (hashmap[i]) return false;
+        hashmap[i] = true;
+      })
+      return true;
+    }
+    /**
+     * Takes from the deck
+     * @param uuid player to take
+     */
+    public takeCards(uuid: string) : boolean {
+      if (this._indexOf[uuid] != this._current) {
+        return false;
+      }
+      this._players[this._current].hand.push(...this._center.cards);
+      this._center.clear();
+      return true;
+    }
 }
 
 /*

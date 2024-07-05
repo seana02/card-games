@@ -142,5 +142,11 @@ export class Deck {
     public addDeck(deck: Deck) {
         this._deck.push(...deck._deck);
     }
+    public get cards() : Card[] {
+      return this._deck;
+    }
+    public clear() {
+      this._deck = [];
+    }
 
 }

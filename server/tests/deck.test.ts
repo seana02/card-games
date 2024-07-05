@@ -1,4 +1,4 @@
-import {Card, Deck, Suit} from "../src/deck/deck"
+import {Card, Deck, Suit} from "../src/types/Deck"
 
 let global_deck : Deck = new Deck();
 global_deck.init();
