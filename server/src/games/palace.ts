@@ -22,7 +22,7 @@ class Palace {
     /**
      * Current state of the game
      */
-    private _state : PalaceState;
+    private _state: PalaceState;
 
     /**
      * Face-down center pile to draw from.
@@ -61,7 +61,7 @@ class Palace {
             });
         }
     }
-    
+
     /**
      * Sets up face up cards chosen by the player.
      * Can be out of order, so requires identification.
@@ -78,7 +78,7 @@ class Palace {
     public revealCards(uuid: string, i1: number, i2: number, i3: number): boolean {
         // ensure that 0 <= i1 < i2 < i3 < 6
         if (this.checkValidIndices(uuid, [i1, i2, i3])) return false;
-        [i1, i2, i3] = [i1, i2, i3].sort((a,b) => b-a);
+        [i1, i2, i3] = [i1, i2, i3].sort((a, b) => b - a);
 
         // If the player already made their choice, don't try again
         if (this._players[this._indexOf[uuid]].ready) return false;
@@ -126,7 +126,7 @@ class Palace {
 
         cards.sort((a, b) => (b - a));
 
-        cards.forEach(i => this._center.add(playerHand.splice(i)[0]) );
+        cards.forEach(i => this._center.add(playerHand.splice(i)[0]));
 
         this.nextPlayer();
 
@@ -140,13 +140,13 @@ class Palace {
      * @param indeces set of cards
      * @returns validity
      */
-    private checkValidIndices(uuid: string, indeces: number[]) : boolean  {
+    private checkValidIndices(uuid: string, indeces: number[]): boolean {
         // if there are too many cards specified, it is invalid
-        let hand_length  = this._players[this._indexOf[uuid]].hand.length;
+        let hand_length = this._players[this._indexOf[uuid]].hand.length;
         if (indeces.length > hand_length) return false;
 
         // if there are duplicate indices, is it invalid
-        let map : boolean[] = Array(hand_length).fill(false);
+        let map: boolean[] = Array(hand_length).fill(false);
         indeces.forEach(i => {
             if (i < 0 || i >= hand_length || map[i]) return false;
             map[i] = true;
@@ -158,7 +158,7 @@ class Palace {
      * Takes from the deck
      * @param uuid player to take
      */
-    public takeCards(uuid: string) : boolean {
+    public takeCards(uuid: string): boolean {
         if (this._indexOf[uuid] != this._current) {
             return false;
         }

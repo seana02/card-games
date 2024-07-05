@@ -1,6 +1,6 @@
-import {Card, Deck, Suit} from "../src/types/Deck"
+import { Card, Deck, Suit } from "../src/types/Deck"
 
-let global_deck : Deck = new Deck();
+let global_deck: Deck = new Deck();
 global_deck.init();
 
 describe('Card class', () => {
@@ -17,7 +17,7 @@ describe('Card class', () => {
     });
 
     test('create valid Joker', () => {
-        expect(new Card(Suit.Joker, 0)).toEqual({'_suit': Suit.Joker, '_value': 0});
+        expect(new Card(Suit.Joker, 0)).toEqual({ '_suit': Suit.Joker, '_value': 0 });
     });
 
     test('create invalid Joker', () => {
@@ -50,13 +50,13 @@ describe('Card class', () => {
 describe('Deck class', () => {
 
     test('test draw+add', () => {
-      let top : Card = global_deck.peek() as Card;
-      let curr_card : Card | null = global_deck.draw();
-      let curr_card_2 : Card | null = global_deck.draw();
-      global_deck.add(curr_card_2 as Card);
-      global_deck.add(curr_card as Card);
-      expect((global_deck.peek() as Card).suit).toBe(top.suit);
+        let top: Card = global_deck.peek() as Card;
+        let curr_card: Card | null = global_deck.draw();
+        let curr_card_2: Card | null = global_deck.draw();
+        global_deck.add(curr_card_2 as Card);
+        global_deck.add(curr_card as Card);
+        expect((global_deck.peek() as Card).suit).toBe(top.suit);
     });
 
     // add more tests inside this describe function
-  });
+});

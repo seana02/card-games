@@ -100,7 +100,7 @@ export class Deck {
       */
     public shuffle() {
         for (let i = this._deck.length - 1; i >= 1; i--) {
-            let choice = Math.floor(Math.random() * (i+1));
+            let choice = Math.floor(Math.random() * (i + 1));
             let temp = this._deck[i];
             this._deck[i] = this._deck[choice];
             this._deck[choice] = temp;
@@ -150,11 +150,11 @@ export class Deck {
     public addDeck(deck: Deck) {
         this._deck.push(...deck._deck);
     }
-    public get cards() : Card[] {
-      return this._deck;
+    public get cards(): Card[] {
+        return this._deck;
     }
     public clear() {
-      this._deck = [];
+        this._deck = [];
     }
 
 }

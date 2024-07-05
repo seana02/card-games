@@ -6,10 +6,10 @@ const app = express();
 const httpServer = require('http').createServer(app);
 
 const io = new Server<
-  socketTypes.ClientToServerEvents,
-  socketTypes.ServerToClientEvents,
-  socketTypes.InterServerEvents,
-  socketTypes.SocketData
+    socketTypes.ClientToServerEvents,
+    socketTypes.ServerToClientEvents,
+    socketTypes.InterServerEvents,
+    socketTypes.SocketData
 >(httpServer, {
     cors: {
         origin: 'http://localhost:5173',
