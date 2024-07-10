@@ -186,26 +186,28 @@ class Palace {
      * @param value the value of the card played
      * @returns validity
      */
-    private checkPlayableOnTop(value: number) {
+    private checkPlayableOnTop(value: number) : boolean {
         let top = this._center.peek().value;
         if (!top) return true;
 
-        // Note: Ace is 1
+        // Note: Ace is 14
+        let reverse_flag : number = this._cardEffects & CardEffects.SEVEN_BELOW;
         switch(value) {
-            case 1: return !(this._cardEffects & CardEffects.SEVEN_BELOW);
+            case 14: return !reverse_flag;
             case 2:
             case 3:
             case 10: return true;
             case 4:
             case 5:
             case 6:
-            case 7: return top !== 1 && top <= value || top === 7;
+            case 7: return top <= value || ((reverse_flag) && (top === 7));
             case 8:
             case 9:
             case 11: 
             case 12:
-            case 13: return top !== 1 && top !== 7 && top <= value;
+            case 13: return (!reverse_flag || top !== 7) && top <= value;
         }
+        return false;
     }
 
     /**

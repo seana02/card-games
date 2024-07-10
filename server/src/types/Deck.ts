@@ -29,7 +29,7 @@ export class Card {
                 this._value = value;
             }
         } else {
-            if (value < 1 || value > 13) {
+            if (value < 1 || value > 14) {
                 throw Error("Invalid card value");
             }
             this._value = value;
@@ -83,7 +83,7 @@ export class Deck {
       */
     public init(jokers: boolean) {
         this._deck = [];
-        for (let i = 1; i <= 13; i++) {
+        for (let i = 2; i <= 14; i++) {
             this._deck.push(new Card(Suit.Club, i));
             this._deck.push(new Card(Suit.Heart, i));
             this._deck.push(new Card(Suit.Spade, i));
