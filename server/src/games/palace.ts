@@ -1,6 +1,17 @@
 import { Action, Player } from "types/Player";
 import { Card, Deck } from "types/Deck";
 
+/**
+ * Available special card effects
+ */
+enum CardEffects {
+    THREE_FORCEGIVE = 1 << 0,
+    SEVEN_BELOW = 1 << 1,
+    EIGHT_SKIP = 1 << 2,
+    NINE_REVERSE = 1 << 3,
+    TEN_BOMB = 1 << 4,
+}
+
 enum PalaceState {
     SETTING,
     IN_GAME,
@@ -34,6 +45,9 @@ class Palace {
      */
     private _discard: Deck;
 
+    /**
+     * List of players, and the map from player uuid to array index
+     */
     private _players: PalacePlayer[];
     private _indexOf: { [uuid: string]: number }
 
@@ -43,9 +57,19 @@ class Palace {
     private _current: number;
 
     /**
+     * Enabled special card effects
+     */
+    private _cardEffects: number;
+
+    /**
+     * Whether the turn order is reversed or not
+     */
+    private _reversed: boolean;
+
+    /**
      * Initializes a Palace game and deals out cards.
      */
-    constructor(players: Player[]) {
+    constructor(players: Player[], cardRules: CardEffects[] = [CardEffects.THREE_FORCEGIVE, CardEffects.SEVEN_BELOW, CardEffects.EIGHT_SKIP, CardEffects.TEN_BOMB]) {
         if (players.length < 1) throw Error("Requires at least 2 players");
         this._center = new Deck(true);
         this._center.shuffle();
@@ -60,6 +84,9 @@ class Palace {
                 ready: false,
             });
         }
+        this._reversed = false;
+        this._cardEffects = 0;
+        cardRules.forEach(e => this._cardEffects |= e);
     }
 
     /**
@@ -100,7 +127,7 @@ class Palace {
      * Determines and goes to the next player
      */
     public nextPlayer() {
-        this._current = (this._current + 1) % this._players.length;
+        this._current = (this._current + (this._reversed ? -1 : 1)) % this._players.length;
     }
 
     /**
@@ -111,26 +138,74 @@ class Palace {
      * @returns if successful, true
      */
     public playCards(uuid: string, cards: number[]): boolean {
+        // if it is not player's turn, don't do
         if (this._indexOf[uuid] !== this._current) {
             return false;
         }
 
+        // check for invalid indices
+        if (!this.checkValidIndices(uuid, cards)) return false;
+
+        // only same-valued cards may be played at the same time
         let playerHand = this._players[this._current].hand;
+        let value = playerHand[cards[0]].value;
         cards.forEach(val => {
-            if (playerHand[val].value !== playerHand[cards[0]].value) {
+            if (playerHand[val].value !== value) {
                 return false;
             }
         });
 
-        if (!this.checkValidIndices(uuid, cards)) return false;
+        // card must be higher-valued, unless 7 or empty
+        if (!this.checkPlayableOnTop(value)) return false;
 
+        // reverse-sorts the indices for removal
         cards.sort((a, b) => (b - a));
 
+        // moves cards to center pile
         cards.forEach(i => this._center.add(playerHand.splice(i)[0]));
 
+        if (this._cardEffects & CardEffects.THREE_FORCEGIVE && value === 3) {
+            // 3 is played
+        } else if (this._cardEffects & CardEffects.EIGHT_SKIP && value === 8) {
+            this.nextPlayer();
+        } else if (this._cardEffects & CardEffects.NINE_REVERSE && value === 9) {
+            this._reversed = !this._reversed;
+        } else if (this._cardEffects & CardEffects.TEN_BOMB && value === 10) {
+            // 10 is played
+        }
+
+        // goes to next player
         this.nextPlayer();
 
         return true;
+    }
+
+    /**
+     * Verifies that the given value is higher than the top of the deck
+     *
+     * @param value the value of the card played
+     * @returns validity
+     */
+    private checkPlayableOnTop(value: number) {
+        let top = this._center.peek().value;
+        if (!top) return true;
+
+        // Note: Ace is 1
+        switch(value) {
+            case 1: return !(this._cardEffects & CardEffects.SEVEN_BELOW);
+            case 2:
+            case 3:
+            case 10: return true;
+            case 4:
+            case 5:
+            case 6:
+            case 7: return top !== 1 && top <= value || top === 7;
+            case 8:
+            case 9:
+            case 11: 
+            case 12:
+            case 13: return top !== 1 && top !== 7 && top <= value;
+        }
     }
 
     /**
