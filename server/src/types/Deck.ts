@@ -1,11 +1,5 @@
-/**
-  * Represents the possible suit values.
-  */
 export enum Suit { Club, Heart, Spade, Diamond, Joker }
 
-/**
-  * Represents a single Card with a suit and value.
-  */
 export class Card {
     private _suit: Suit;
     private _value: number;
@@ -55,9 +49,6 @@ export class Card {
     public get value() { return this._value; }
 }
 
-/**
-  * Represents a deck of {@link Card | Cards}
-  */
 export class Deck {
     private _deck: Card[];
 
@@ -110,10 +101,13 @@ export class Deck {
     /**
       * Returns the top of the deck without removing it.
       *
-      * @returns the top {@link Card}, or null if the deck is empty.
+      * @param n the card number from the top to draw. If <= 1, defaults to the top card
+      * @returns the nth {@link Card } from the top, or null if such a card doesn't exist.
       */
-    public peek(): Card | null {
-        return this._deck[this._deck.length - 1];
+    public peek(n: number = 1): Card | null {
+        if (n < 1) n = 1;
+        if (this._deck.length - n < 0) return null;
+        return this._deck[this._deck.length - n];
     }
 
     /**

@@ -25,62 +25,33 @@ interface PalacePlayer extends Player {
 }
 
 class Palace {
-    /**
-     * The socket.io room id of the game
-     */
-    private _room: string;
+    private _roomID: string;
+    private _gameState: PalaceState;
 
-    /**
-     * Current state of the game
-     */
-    private _state: PalaceState;
+    private _drawPile: Deck;
+    private _discardPile: Deck;
 
-    /**
-     * Face-down center pile to draw from.
-     */
-    private _center: Deck;
-
-    /**
-     * Face-up card to discard cards. These cards are not yet out of play.
-     */
-    private _discard: Deck;
-
-    /**
-     * List of players, and the map from player uuid to array index
-     */
     private _players: PalacePlayer[];
     private _indexOf: { [uuid: string]: number }
 
-    /**
-     * The index of the current PalacePlayer
-     */
-    private _current: number;
+    private _currentPlayer: number;
 
-    /**
-     * Enabled special card effects
-     */
     private _cardEffects: number;
 
-    /**
-     * Whether the turn order is reversed or not
-     */
     private _reversed: boolean;
 
-    /**
-     * Initializes a Palace game and deals out cards.
-     */
     constructor(players: Player[], cardRules: CardEffects[] = [CardEffects.THREE_FORCEGIVE, CardEffects.SEVEN_BELOW, CardEffects.EIGHT_SKIP, CardEffects.TEN_BOMB]) {
         if (players.length < 1) throw Error("Requires at least 2 players");
-        this._center = new Deck(true);
-        this._center.shuffle();
-        this._state = PalaceState.SETTING;
+        this._drawPile = new Deck(true);
+        this._drawPile.shuffle();
+        this._gameState = PalaceState.SETTING;
         for (let i = 0; i < players.length; i++) {
             this._indexOf[players[i].uuid] = i;
             this._players.push({
                 ...players[i],
-                hidden: this._center.draw(3),
+                hidden: this._drawPile.draw(3),
                 revealed: [],
-                hand: this._center.draw(6),
+                hand: this._drawPile.draw(6),
                 ready: false,
             });
         }
@@ -119,7 +90,7 @@ class Palace {
         this._players.forEach(i => {
             if (!i.ready) return true;
         });
-        this._state = PalaceState.IN_GAME;
+        this._gameState = PalaceState.IN_GAME;
         return true;
     }
 
@@ -127,7 +98,7 @@ class Palace {
      * Determines and goes to the next player
      */
     public nextPlayer() {
-        this._current = (this._current + (this._reversed ? -1 : 1)) % this._players.length;
+        this._currentPlayer = (this._currentPlayer + (this._reversed ? -1 : 1)) % this._players.length;
     }
 
     /**
@@ -138,16 +109,10 @@ class Palace {
      * @returns if successful, true
      */
     public playCards(uuid: string, cards: number[]): boolean {
-        // if it is not player's turn, don't do
-        if (this._indexOf[uuid] !== this._current) {
-            return false;
-        }
-
-        // check for invalid indices
         if (!this.checkValidIndices(uuid, cards)) return false;
 
         // only same-valued cards may be played at the same time
-        let playerHand = this._players[this._current].hand;
+        let playerHand = this._players[this._currentPlayer].hand;
         let value = playerHand[cards[0]].value;
         cards.forEach(val => {
             if (playerHand[val].value !== value) {
@@ -155,14 +120,24 @@ class Palace {
             }
         });
 
-        // card must be higher-valued, unless 7 or empty
+        // completions can be out of turn
+        if (this.completes(uuid, playerHand)) {
+            cards.sort((a, b) => (b - a));
+            cards.forEach(i => this._discardPile.add(playerHand.splice(i)[0]));
+            this.bombCenter();
+            this._currentPlayer = this._indexOf[uuid];
+            return true;
+        }
+        
+        if (this._indexOf[uuid] !== this._currentPlayer) {
+            return false;
+        }
+
         if (!this.checkPlayableOnTop(value)) return false;
 
-        // reverse-sorts the indices for removal
         cards.sort((a, b) => (b - a));
 
-        // moves cards to center pile
-        cards.forEach(i => this._center.add(playerHand.splice(i)[0]));
+        cards.forEach(i => this._discardPile.add(playerHand.splice(i)[0]));
 
         if (this._cardEffects & CardEffects.THREE_FORCEGIVE && value === 3) {
             // 3 is played
@@ -171,10 +146,9 @@ class Palace {
         } else if (this._cardEffects & CardEffects.NINE_REVERSE && value === 9) {
             this._reversed = !this._reversed;
         } else if (this._cardEffects & CardEffects.TEN_BOMB && value === 10) {
-            // 10 is played
+            this.bombCenter();
         }
 
-        // goes to next player
         this.nextPlayer();
 
         return true;
@@ -187,27 +161,51 @@ class Palace {
      * @returns validity
      */
     private checkPlayableOnTop(value: number) : boolean {
-        let top = this._center.peek().value;
+        let top = this._discardPile.peek().value;
         if (!top) return true;
 
         // Note: Ace is 14
-        let reverse_flag : number = this._cardEffects & CardEffects.SEVEN_BELOW;
+        let reverse_flag : boolean = (this._cardEffects & CardEffects.SEVEN_BELOW) && (top === 7);
         switch(value) {
-            case 14: return !reverse_flag;
             case 2:
             case 3:
             case 10: return true;
             case 4:
             case 5:
             case 6:
-            case 7: return top <= value || ((reverse_flag) && (top === 7));
+            case 7: return top <= value || reverse_flag;
             case 8:
             case 9:
             case 11: 
             case 12:
-            case 13: return (!reverse_flag || top !== 7) && top <= value;
+            case 13: return !reverse_flag && top <= value;
+            case 14: return !reverse_flag;
         }
         return false;
+    }
+
+    /**
+     * Handles when the discard pile is bombed via a completion or bomb card
+     */
+    private bombCenter() {
+        this._discardPile.clear();
+    }
+
+    /**
+     * Determines if the given cards completes a set of 4.
+     *
+     * @param cards the list of cards played
+     * @returns boolean representing the given cards complete the set
+     */
+    private completes(uuid: string, cards: Card[]): boolean {
+        let val: number = cards[0].value;
+        let num: number = cards.length;
+        for (let i = 1; i <= 4 - num; i++) {
+           if (val !== this._discardPile.peek(i).value) {
+               return false;
+           } 
+        }
+        return true;
     }
 
     /**
@@ -236,11 +234,11 @@ class Palace {
      * @param uuid player to take
      */
     public takeCards(uuid: string): boolean {
-        if (this._indexOf[uuid] != this._current) {
+        if (this._indexOf[uuid] != this._currentPlayer) {
             return false;
         }
-        this._players[this._current].hand.push(...this._center.cards);
-        this._center.clear();
+        this._players[this._currentPlayer].hand.push(...this._discardPile.cards);
+        this._discardPile.clear();
         return true;
     }
 }
