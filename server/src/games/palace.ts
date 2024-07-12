@@ -1,9 +1,6 @@
 import { Action, Player } from "types/Player";
 import { Card, Deck } from "types/Deck";
 
-/**
- * Available special card effects
- */
 enum CardEffects {
     THREE_FORCEGIVE = 1 << 0,
     SEVEN_BELOW = 1 << 1,
@@ -11,6 +8,8 @@ enum CardEffects {
     NINE_REVERSE = 1 << 3,
     TEN_BOMB = 1 << 4,
 }
+
+let defaultEffects = [CardEffects.THREE_FORCEGIVE, CardEffects.SEVEN_BELOW, CardEffects.EIGHT_SKIP, CardEffects.TEN_BOMB];
 
 enum PalaceState {
     SETTING,
@@ -40,7 +39,10 @@ class Palace {
 
     private _reversed: boolean;
 
-    constructor(players: Player[], cardRules: CardEffects[] = [CardEffects.THREE_FORCEGIVE, CardEffects.SEVEN_BELOW, CardEffects.EIGHT_SKIP, CardEffects.TEN_BOMB]) {
+    private _threePlayed: string;
+    private _threeTarget: string;
+
+    constructor(players: Player[], cardRules: CardEffects[] = defaultEffects) {
         if (players.length < 1) throw Error("Requires at least 2 players");
         this._drawPile = new Deck(true);
         this._drawPile.shuffle();
@@ -76,16 +78,14 @@ class Palace {
     public revealCards(uuid: string, i1: number, i2: number, i3: number): boolean {
         // ensure that 0 <= i1 < i2 < i3 < 6
         if (this.checkValidIndices(uuid, [i1, i2, i3])) return false;
-        [i1, i2, i3] = [i1, i2, i3].sort((a, b) => b - a);
+        let inds = [i1, i2, i3].sort((a, b) => b - a);
 
         // If the player already made their choice, don't try again
         if (this._players[this._indexOf[uuid]].ready) return false;
 
         let player: PalacePlayer = this._players[this._indexOf[uuid]];
         // highest index first to avoid position shifting
-        player.revealed.push(player.hand.splice(i1)[0]);
-        player.revealed.push(player.hand.splice(i2)[0]);
-        player.revealed.push(player.hand.splice(i3)[0]);
+        inds.forEach(i => player.revealed.push(player.hand.splice(i)[0]));
         player.ready = true;
         this._players.forEach(i => {
             if (!i.ready) return true;
@@ -112,14 +112,11 @@ class Palace {
         if (!this.checkValidIndices(uuid, cards)) return false;
 
         // only same-valued cards may be played at the same time
+        if (!this.checkIdenticalValues(uuid, cards)) return false;
+
         let playerHand = this._players[this._currentPlayer].hand;
         let value = playerHand[cards[0]].value;
-        cards.forEach(val => {
-            if (playerHand[val].value !== value) {
-                return false;
-            }
-        });
-
+        
         // completions can be out of turn
         if (this.completes(uuid, playerHand)) {
             cards.sort((a, b) => (b - a));
@@ -148,9 +145,34 @@ class Palace {
         } else if (this._cardEffects & CardEffects.TEN_BOMB && value === 10) {
             this.bombCenter();
         }
-
+    
         this.nextPlayer();
 
+        return true;
+    }
+
+    public playThree(uuid: string, target: string, cards: number[]): boolean {
+        if (!this.checkValidIndices(uuid, cards)) return false;
+        if (!this.checkIdenticalValues(uuid, cards)) return false;
+        if (this._threeTarget && this._threeTarget != target) return false;
+
+        let playerHand = this._players[this._currentPlayer].hand;
+        let value = playerHand[cards[0]].value;
+        if (value !== 3) return this.playCards(uuid, cards);
+        
+        if (!this._indexOf[target]) return false;
+
+        this._threePlayed = uuid;
+        this._threeTarget = target;
+        this._currentPlayer = this._indexOf[target];
+        return true;
+    }
+
+    public loseThreeChallenge(uuid: string): boolean {
+        this.takeCards(uuid);
+        this._currentPlayer = this._indexOf[this._threePlayed];
+        this._threePlayed = null;
+        this._threeTarget = null;
         return true;
     }
 
@@ -187,7 +209,7 @@ class Palace {
     /**
      * Handles when the discard pile is bombed via a completion or bomb card
      */
-    private bombCenter() {
+    public bombCenter() {
         this._discardPile.clear();
     }
 
@@ -230,6 +252,23 @@ class Palace {
     }
 
     /**
+     * Verifies that every card in the list is the same value
+     *
+     * @param cards set of cards
+     * @return whether the cards are the same value or not
+     */
+    private checkIdenticalValues(uuid: string, cards: number[]) {
+        let playerHand = this._players[this._indexOf[uuid]].hand;
+        let value = playerHand[cards[0]].value;
+        cards.forEach(val => {
+            if (playerHand[val].value !== value) {
+                return false;
+            }
+        });
+        return true;
+    }
+
+    /**
      * Takes from the deck
      * @param uuid player to take
      */
@@ -239,6 +278,16 @@ class Palace {
         }
         this._players[this._currentPlayer].hand.push(...this._discardPile.cards);
         this._discardPile.clear();
+        return true;
+    }
+
+    /**
+     * Draw a card from the deck
+     */
+    public drawCard(uuid: string): boolean {
+        let card = this._drawPile.draw(1)[0];
+        if (!card) return false;
+        this._players[this._indexOf[uuid]].hand.push(card);
         return true;
     }
 }
