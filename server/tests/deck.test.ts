@@ -1,7 +1,7 @@
 import { Card, Deck, Suit } from "../src/types/Deck"
 
 let global_deck: Deck = new Deck();
-global_deck.init();
+global_deck.init(true);
 
 describe('Card class', () => {
     test('create card with too low value', () => {
@@ -13,7 +13,7 @@ describe('Card class', () => {
     });
 
     test('create card with too high value', () => {
-        expect(() => new Card(Suit.Spade, 14)).toThrow('Invalid card value');
+        expect(() => new Card(Suit.Spade, 15)).toThrow('Invalid card value');
     });
 
     test('create valid Joker', () => {
@@ -41,7 +41,7 @@ describe('Card class', () => {
             let rand = Math.floor(Math.random() * 13 + 1);
             let card = new Card(Suit.Heart, rand);
 
-            expect(card.val).toBe(rand);
+            expect(card.value).toBe(rand);
         }
     });
 
@@ -51,8 +51,8 @@ describe('Deck class', () => {
 
     test('test draw+add', () => {
         let top: Card = global_deck.peek() as Card;
-        let curr_card: Card | null = global_deck.draw();
-        let curr_card_2: Card | null = global_deck.draw();
+        let curr_card: Card | null = (global_deck.draw(1) as Card[])[0];
+        let curr_card_2: Card | null = (global_deck.draw(1) as Card[])[0];
         global_deck.add(curr_card_2 as Card);
         global_deck.add(curr_card as Card);
         expect((global_deck.peek() as Card).suit).toBe(top.suit);
