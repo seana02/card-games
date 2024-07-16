@@ -4,7 +4,7 @@ import { Card } from './Deck'
 export type Player = {
     uuid: string;
     name: string;
-    conn: Socket;
+    conn: Socket|null;
 
 }
 export type Action = {

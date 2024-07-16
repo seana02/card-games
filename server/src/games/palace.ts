@@ -1,7 +1,7 @@
-import { Action, Player } from "types/Player";
-import { Card, Deck } from "types/Deck";
+import { Action, Player } from "../types/Player";
+import { Card, Deck } from "../types/Deck";
 
-enum CardEffects {
+export enum CardEffects {
     THREE_FORCEGIVE = 1 << 0,
     SEVEN_BELOW = 1 << 1,
     EIGHT_SKIP = 1 << 2,
@@ -11,44 +11,47 @@ enum CardEffects {
 
 let defaultEffects = [CardEffects.THREE_FORCEGIVE, CardEffects.SEVEN_BELOW, CardEffects.EIGHT_SKIP, CardEffects.TEN_BOMB];
 
-enum PalaceState {
+export enum PalaceState {
     SETTING,
     IN_GAME,
 }
 
-interface PalacePlayer extends Player {
+export interface PalacePlayer extends Player {
     hidden: Card[],
     revealed: Card[],
     hand: Card[],
     ready: boolean,
 }
 
-class Palace {
-    private _roomID: string;
-    private _gameState: PalaceState;
+export class Palace {
+    public _roomID: string;
+    public _gameState: PalaceState;
 
-    private _drawPile: Deck;
-    private _discardPile: Deck;
+    public _drawPile: Deck;
+    public _discardPile: Deck;
 
-    private _players: PalacePlayer[];
-    private _indexOf: { [uuid: string]: number }
+    public _players: PalacePlayer[];
+    public _indexOf: { [uuid: string]: number }
 
-    private _currentPlayer: number;
+    public _currentPlayer: number;
 
-    private _cardEffects: number;
+    public _cardEffects: number;
 
-    private _reversed: boolean;
+    public _reversed: boolean;
 
-    private _threePlayed: string;
-    private _threeTarget: string;
+    public _threePlayed: string;
+    public _threeTarget: string;
 
     constructor(players: Player[], cardRules: CardEffects[] = defaultEffects) {
+        this._players = [];
+        this._indexOf = {};
         if (players.length < 1) throw Error("Requires at least 2 players");
         this._drawPile = new Deck(true);
         this._drawPile.shuffle();
         this._gameState = PalaceState.SETTING;
         for (let i = 0; i < players.length; i++) {
-            this._indexOf[players[i].uuid] = i;
+            let p = players[i].uuid;
+            this._indexOf[p] = i;
             this._players.push({
                 ...players[i],
                 hidden: this._drawPile.draw(3),
@@ -77,7 +80,7 @@ class Palace {
      */
     public revealCards(uuid: string, i1: number, i2: number, i3: number): boolean {
         // ensure that 0 <= i1 < i2 < i3 < 6
-        if (this.checkValidIndices(uuid, [i1, i2, i3])) return false;
+        if (!this.checkValidIndices(uuid, [i1, i2, i3])) return false;
         let inds = [i1, i2, i3].sort((a, b) => b - a);
 
         // If the player already made their choice, don't try again
@@ -85,11 +88,13 @@ class Palace {
 
         let player: PalacePlayer = this._players[this._indexOf[uuid]];
         // highest index first to avoid position shifting
-        inds.forEach(i => player.revealed.push(player.hand.splice(i)[0]));
+        inds.forEach(i => player.revealed.push(player.hand.splice(i, 1)[0]));
         player.ready = true;
+        let flag = false;
         this._players.forEach(i => {
-            if (!i.ready) return true;
+            if (!i.ready) flag = true;
         });
+        if (flag) return true;
         this._gameState = PalaceState.IN_GAME;
         return true;
     }
@@ -120,7 +125,7 @@ class Palace {
         // completions can be out of turn
         if (this.completes(uuid, playerHand)) {
             cards.sort((a, b) => (b - a));
-            cards.forEach(i => this._discardPile.add(playerHand.splice(i)[0]));
+            cards.forEach(i => this._discardPile.add(playerHand.splice(i, 1)[0]));
             this.bombCenter();
             this._currentPlayer = this._indexOf[uuid];
             return true;
@@ -134,7 +139,7 @@ class Palace {
 
         cards.sort((a, b) => (b - a));
 
-        cards.forEach(i => this._discardPile.add(playerHand.splice(i)[0]));
+        cards.forEach(i => this._discardPile.add(playerHand.splice(i, 1)[0]));
 
         if (this._cardEffects & CardEffects.THREE_FORCEGIVE && value === 3) {
             // 3 is played
@@ -182,7 +187,7 @@ class Palace {
      * @param value the value of the card played
      * @returns validity
      */
-    private checkPlayableOnTop(value: number) : boolean {
+    public checkPlayableOnTop(value: number) : boolean {
         let top = this._discardPile.peek().value;
         if (!top) return true;
 
@@ -219,7 +224,7 @@ class Palace {
      * @param cards the list of cards played
      * @returns boolean representing the given cards complete the set
      */
-    private completes(uuid: string, cards: Card[]): boolean {
+    public completes(uuid: string, cards: Card[]): boolean {
         let val: number = cards[0].value;
         let num: number = cards.length;
         for (let i = 1; i <= 4 - num; i++) {
@@ -237,7 +242,7 @@ class Palace {
      * @param indeces set of cards
      * @returns validity
      */
-    private checkValidIndices(uuid: string, indeces: number[]): boolean {
+    public checkValidIndices(uuid: string, indeces: number[]): boolean {
         // if there are too many cards specified, it is invalid
         let hand_length = this._players[this._indexOf[uuid]].hand.length;
         if (indeces.length > hand_length) return false;
@@ -257,7 +262,7 @@ class Palace {
      * @param cards set of cards
      * @return whether the cards are the same value or not
      */
-    private checkIdenticalValues(uuid: string, cards: number[]) {
+    public checkIdenticalValues(uuid: string, cards: number[]) {
         let playerHand = this._players[this._indexOf[uuid]].hand;
         let value = playerHand[cards[0]].value;
         cards.forEach(val => {
