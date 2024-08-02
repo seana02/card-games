@@ -23,7 +23,7 @@ interface PalacePlayer extends Player {
     ready: boolean,
 }
 
-class Palace {
+export default class Palace {
     private _roomID: string;
     private _gameState: PalaceState;
 
