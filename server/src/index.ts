@@ -27,21 +27,24 @@ io.on('connection', socket => {
     console.log(`${socket.id} connected`);
 
     socket.on('joinGame', (roomID: number, name: string) => {
+        // if rooms already has an active game, join as spectator
         if (games[roomID]) {
-            socket.emit('join', false);
+            socket.emit('joinSpectator');
             return;
         }
         room = roomID;
 
+        let roomCreated: boolean = false;
         if (!waiting[roomID]) {
             waiting[roomID] = [];
+            roomCreated = true;
         }
 
         socket.join(`${roomID}`);
 
         waiting[roomID].push({ uuid: socket.id, name: name, conn: socket });
-        socket.emit('join', true);
-        socket.to(`${roomID}`).emit('playerJoined', name);
+        socket.emit('join', roomCreated); // emits to only socket
+        socket.to(`${roomID}`).emit('playerJoined', name); // emits to all in roomID except socket
     });
 });
 

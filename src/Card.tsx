@@ -14,7 +14,41 @@ import CK from './assets/CK'; import HK from './assets/HK'; import SK from './as
 import B1 from './assets/BBl'; import B2 from './assets/BRe'; import J1 from './assets/J1'; import J2 from './assets/J2'; 
 import { ReactElement } from 'react';
 
-let cards: {[key: string]: ReactElement} = {
+export enum Suit { Club, Heart, Spade, Diamond, Joker }
+
+let cards: { [suit: number]: { [val: number]: ReactElement } } = {
+    [Suit.Club]: {
+        1: <C1 />, 2: <C2 />, 3: <C3 />, 4: <C4 />,
+        5: <C5 />, 6: <C6 />, 7: <C7 />, 8: <C8 />,
+        9: <C9 />, 10: <CT />, 11: <CJ />, 12: <CQ />,
+        13: <CK />, 14: <C1 />
+    },
+    [Suit.Heart]: {
+        1: <H1 />, 2: <H2 />, 3: <H3 />, 4: <H4 />,
+        5: <H5 />, 6: <H6 />, 7: <H7 />, 8: <H8 />,
+        9: <H9 />, 10: <HT />, 11: <HJ />, 12: <HQ />,
+        13: <HK />, 14: <H1 />
+    },
+    [Suit.Spade]: {
+        1: <S1 />, 2: <S2 />, 3: <S3 />, 4: <S4 />,
+        5: <S5 />, 6: <S6 />, 7: <S7 />, 8: <S8 />,
+        9: <S9 />, 10: <ST />, 11: <SJ />, 12: <SQ />,
+        13: <SK />, 14: <S1 />
+    },
+    [Suit.Diamond]: {
+        1: <D1 />, 2: <D2 />, 3: <D3 />, 4: <D4 />,
+        5: <D5 />, 6: <D6 />, 7: <D7 />, 8: <D8 />,
+        9: <D9 />, 10: <DT />, 11: <DJ />, 12: <DQ />,
+        13: <DK />,
+        14: <D1 />
+    },
+    [Suit.Joker]: {
+        0: <J2 />,
+        1: <J1 />
+    }
+}
+
+let cardsStr: {[key: string]: ReactElement} = {
     "C1": <C1 />, "H1": <H1 />, "S1": <S1 />, "D1": <D1 />, 
     "C2": <C2 />, "H2": <H2 />, "S2": <S2 />, "D2": <D2 />, 
     "C3": <C3 />, "H3": <H3 />, "S3": <S3 />, "D3": <D3 />, 
@@ -34,15 +68,25 @@ let cards: {[key: string]: ReactElement} = {
 
 /**
  * Component to get a Card.
- * The format for the base 52 cards are {Suit}{Value} where
- * Suit can be C, H, S, D and Value can be 1-9, T, J, Q, K
- * e.g. C2 represents the 2 of Clubs and SQ represents the queen of Spades.
- * Special cards are represented as B1 or BBl for the black back,
- * B2 or BRe for the red back,
- * J1 for the colorful joker and J2 for the monochrome joker.
+ * A card can be returned by either (1) a two-character
+ * identifier string, or (2) a suit and value.
+ * For (1), the first character is the suit (either C, H, S, D) and a value
+ * (anything from 1-9 or T, J, Q, K for ten, jack, queen, king, respectively).
+ * The identifiers for the jokers are J1 (colorful) and J2 (monochrome).
+ * The identifiers for the card backs are BBl (black) and BRe (red).
+ * For (2), the suit is one of the suit enum values (Club, Heart, Spade, Diamond),
+ * and the value is a number from 1-14.
+ * Jokers can be obtained by passing the "joker" prop with value either 0 (monochrome) or 1 (colorful).
+ * Card backs can be obtained by passing the "back" prop with value either 0 (black) or 1 (red).
  */
-export default function Card(props: { card: string }) {
-    return cards[props.card];
+export default function Card(props: { card: string } | { suit: Suit, value: number } | { joker: number } | { back: number }) {
+    if ("card" in props) return cardsStr[props.card];
+    else if ("suit" in props && "value" in props) return cards[props.suit][props.value];
+    else if ("joker" in props) return cards[Suit.Joker][props.joker];
+    else if ("back" in props) {
+        if (props.back == 1) return <B2 />
+    }
+    return <B1 />;
 }
 
 

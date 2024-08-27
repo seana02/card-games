@@ -9,15 +9,15 @@ export class Card {
       *
       * @param suit - The {@link Suit} of the card.
       *
-      * @param value - The value of the card, where A=1, J=11, Q=12, K=13.
-      * If the suit is Joker, the value may be -1 or 0 black/white or colored Joker.
-      * If suit == {@link Suit.Joker}, must be 0 or -1.
-      * Otherwise, must be >=1 and <=13.
+      * @param value - The value of the card, where A=1 (or 14), J=11, Q=12, K=13.
+      * If the suit is Joker, the value may be 0 or 1 black/white or colored Joker.
+      * If suit == {@link Suit.Joker}, must be 0 or 1.
+      * Otherwise, must be >=1 and <=14.
       */
     constructor(suit: Suit, value: number) {
         this._suit = suit;
         if (suit == Suit.Joker) {
-            if (value != 0 && value != -1) {
+            if (value != 0 && value != 1) {
                 throw Error("Invalid card value");
             } else {
                 this._value = value;
