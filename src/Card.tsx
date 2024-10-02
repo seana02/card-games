@@ -1,17 +1,17 @@
-import C1 from './assets/C1'; import H1 from './assets/H1'; import S1 from './assets/S1'; import D1 from './assets/D1';  
-import C2 from './assets/C2'; import H2 from './assets/H2'; import S2 from './assets/S2'; import D2 from './assets/D2';  
-import C3 from './assets/C3'; import H3 from './assets/H3'; import S3 from './assets/S3'; import D3 from './assets/D3';  
-import C4 from './assets/C4'; import H4 from './assets/H4'; import S4 from './assets/S4'; import D4 from './assets/D4';  
-import C5 from './assets/C5'; import H5 from './assets/H5'; import S5 from './assets/S5'; import D5 from './assets/D5';  
-import C6 from './assets/C6'; import H6 from './assets/H6'; import S6 from './assets/S6'; import D6 from './assets/D6';  
-import C7 from './assets/C7'; import H7 from './assets/H7'; import S7 from './assets/S7'; import D7 from './assets/D7';  
-import C8 from './assets/C8'; import H8 from './assets/H8'; import S8 from './assets/S8'; import D8 from './assets/D8';  
-import C9 from './assets/C9'; import H9 from './assets/H9'; import S9 from './assets/S9'; import D9 from './assets/D9';  
-import CT from './assets/CT'; import HT from './assets/HT'; import ST from './assets/ST'; import DT from './assets/DT';  
-import CJ from './assets/CJ'; import HJ from './assets/HJ'; import SJ from './assets/SJ'; import DJ from './assets/DJ';  
-import CQ from './assets/CQ'; import HQ from './assets/HQ'; import SQ from './assets/SQ'; import DQ from './assets/DQ';  
-import CK from './assets/CK'; import HK from './assets/HK'; import SK from './assets/SK'; import DK from './assets/DK';  
-import B1 from './assets/BBl'; import B2 from './assets/BRe'; import J1 from './assets/J1'; import J2 from './assets/J2'; 
+import C1 from './assets/cards/C1'; import H1 from './assets/cards/H1'; import S1 from './assets/cards/S1'; import D1 from './assets/cards/D1';  
+import C2 from './assets/cards/C2'; import H2 from './assets/cards/H2'; import S2 from './assets/cards/S2'; import D2 from './assets/cards/D2';  
+import C3 from './assets/cards/C3'; import H3 from './assets/cards/H3'; import S3 from './assets/cards/S3'; import D3 from './assets/cards/D3';  
+import C4 from './assets/cards/C4'; import H4 from './assets/cards/H4'; import S4 from './assets/cards/S4'; import D4 from './assets/cards/D4';  
+import C5 from './assets/cards/C5'; import H5 from './assets/cards/H5'; import S5 from './assets/cards/S5'; import D5 from './assets/cards/D5';  
+import C6 from './assets/cards/C6'; import H6 from './assets/cards/H6'; import S6 from './assets/cards/S6'; import D6 from './assets/cards/D6';  
+import C7 from './assets/cards/C7'; import H7 from './assets/cards/H7'; import S7 from './assets/cards/S7'; import D7 from './assets/cards/D7';  
+import C8 from './assets/cards/C8'; import H8 from './assets/cards/H8'; import S8 from './assets/cards/S8'; import D8 from './assets/cards/D8';  
+import C9 from './assets/cards/C9'; import H9 from './assets/cards/H9'; import S9 from './assets/cards/S9'; import D9 from './assets/cards/D9';  
+import CT from './assets/cards/CT'; import HT from './assets/cards/HT'; import ST from './assets/cards/ST'; import DT from './assets/cards/DT';  
+import CJ from './assets/cards/CJ'; import HJ from './assets/cards/HJ'; import SJ from './assets/cards/SJ'; import DJ from './assets/cards/DJ';  
+import CQ from './assets/cards/CQ'; import HQ from './assets/cards/HQ'; import SQ from './assets/cards/SQ'; import DQ from './assets/cards/DQ';  
+import CK from './assets/cards/CK'; import HK from './assets/cards/HK'; import SK from './assets/cards/SK'; import DK from './assets/cards/DK';  
+import B1 from './assets/cards/BBl'; import B2 from './assets/cards/BRe'; import J1 from './assets/cards/J1'; import J2 from './assets/cards/J2'; 
 import { ReactElement } from 'react';
 
 export enum Suit { Club, Heart, Spade, Diamond, Joker }

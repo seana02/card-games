@@ -1,8 +1,10 @@
 import { useState } from "react";
 import Toggle from "../Components/Toggle";
+import { Socket } from "socket.io-client";
+import { ClientToServerEvents, ServerToClientEvents } from "@backend/Socket";
 
 interface Props {
-    start: (options: { nineReverse: boolean }) => void;
+    socket: Socket<ServerToClientEvents, ClientToServerEvents>;
 }
 
 export default function PalaceSettings(props: Props) {
@@ -20,12 +22,10 @@ export default function PalaceSettings(props: Props) {
                     }
                 />
             </div>
-            <div className="start-button" onClick={startClicked}>Start</div>
+            <div className="start-button" onClick={() => {
+                props.socket.emit("startGame", options);
+            }}>Start</div>
         </div>
     );
-
-    function startClicked() {
-        props.start(options);
-    }
 
 }

@@ -1,5 +1,10 @@
-import { Action, Player } from "types/Player";
-import { Card, Deck } from "types/Deck";
+import { Action, Player } from "../types/Player";
+import { Card, Deck } from "../types/Deck";
+import { BroadcastOperator } from "socket.io";
+import { DecorateAcknowledgementsWithMultipleResponses } from "socket.io/dist/typed-events";
+import * as socketTypes from '../types/Socket';
+
+type Room = BroadcastOperator<DecorateAcknowledgementsWithMultipleResponses<socketTypes.ServerToClientEvents>, socketTypes.SocketData>
 
 enum CardEffects {
     THREE_FORCEGIVE = 1 << 0,
@@ -24,7 +29,7 @@ interface PalacePlayer extends Player {
 }
 
 export default class Palace {
-    private _roomID: string;
+    private _room: Room;
     private _gameState: PalaceState;
 
     private _drawPile: Deck;
@@ -42,7 +47,8 @@ export default class Palace {
     private _threePlayed: string;
     private _threeTarget: string;
 
-    constructor(players: Player[], cardRules: CardEffects[] = defaultEffects) {
+    constructor(room: Room, players: Player[], cardRules: CardEffects[] = defaultEffects) {
+        this._room = room;
         if (players.length < 1) throw Error("Requires at least 2 players");
         this._drawPile = new Deck(true);
         this._drawPile.shuffle();
@@ -60,6 +66,12 @@ export default class Palace {
         this._reversed = false;
         this._cardEffects = 0;
         cardRules.forEach(e => this._cardEffects |= e);
+
+        room.emit('gameStart');
+        
+        this._players.forEach(p => {
+            p.conn.emit('initialize', p.hand.map((c: Card) => ({ suit: c.suit, value: c.value })));
+        });
     }
 
     /**
