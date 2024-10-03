@@ -1,5 +1,10 @@
-import { Action, Player } from "types/Player";
-import { Card, Deck } from "types/Deck";
+import { Player } from "../types/Player";
+import { Card, Deck } from "../types/Deck";
+import { BroadcastOperator } from "socket.io";
+import { ServerToClientEvents, SocketData } from "types/Socket";
+import { DecorateAcknowledgementsWithMultipleResponses } from "socket.io/dist/typed-events";
+
+type Room = BroadcastOperator<DecorateAcknowledgementsWithMultipleResponses<ServerToClientEvents>, SocketData>;
 
 enum CardEffects {
     THREE_FORCEGIVE = 1 << 0,
@@ -23,8 +28,8 @@ interface PalacePlayer extends Player {
     ready: boolean,
 }
 
-class Palace {
-    private _roomID: string;
+export default class Palace {
+    private _room: Room;
     private _gameState: PalaceState;
 
     private _drawPile: Deck;
@@ -42,11 +47,15 @@ class Palace {
     private _threePlayed: string;
     private _threeTarget: string;
 
-    constructor(players: Player[], cardRules: CardEffects[] = defaultEffects) {
+    private done = false;
+    constructor(room: Room, players: Player[], cardRules: CardEffects[] = defaultEffects) {
+        this._room = room;
         if (players.length < 1) throw Error("Requires at least 2 players");
         this._drawPile = new Deck(true);
         this._drawPile.shuffle();
         this._gameState = PalaceState.SETTING;
+        this._indexOf = {};
+        this._players = [];
         for (let i = 0; i < players.length; i++) {
             this._indexOf[players[i].uuid] = i;
             this._players.push({
@@ -60,6 +69,17 @@ class Palace {
         this._reversed = false;
         this._cardEffects = 0;
         cardRules.forEach(e => this._cardEffects |= e);
+
+        room.emit('gameStart');
+
+        players.forEach(p => p.conn.on('ready', () => {
+            if (!this.done) {
+                this.done = true;
+                this._players.forEach(p => {
+                    p.conn.emit('initialize', p.hand.map((c: Card) => ({ suit: c.suit, value: c.value })));
+                });
+            }
+        }));
     }
 
     /**

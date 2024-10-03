@@ -1,0 +1,126 @@
+#root {
+  --border: black;
+  --background: white;
+  --black-back: black;
+  --red-back: red;
+  --label-black: black;
+  --label-red: red;
+  --face-border: #44F;
+  --accent: #44F;
+  --lines: black;
+  --hat: red;
+  --hair: #FC4;
+  --ace-qr: white;
+  --ace-center: black;
+  --king-clothes: #44F;
+  --joker-hat: red;
+  --joker-face: #FC4;
+  --joker-eyes: #44F;
+}
+
+.card {
+  --width: 160px;
+  height: calc(var(--width) * 1.4);
+  width: var(--width);
+  transition: 0.2s;
+}
+
+.card-wrapper {
+  z-index: 0;
+}
+
+.card-wrapper:hover {
+  transform: translateY(-40px);
+  transition: 0.2s;
+}
+
+.card-wrapper:hover~.card-wrapper {
+  z-index: 1;
+  transition: 0.2s ease-in-out;
+}
+
+.back-black {
+  fill: var(--black-back);
+}
+
+.back-red {
+  fill: var(--red-back);
+}
+
+.rect {
+  fill: var(--background);
+  stroke: var(--border);
+}
+
+.label-value-black {
+  stroke: var(--label-black);
+}
+
+.label-suit-black {
+  fill: var(--label-black);
+}
+
+.label-value-red {
+  stroke: var(--label-red);
+}
+
+.label-suit-red {
+  fill: var(--label-red);
+}
+
+.face-border-internal {
+  stroke: var(--face-border);
+}
+
+.accent {
+  stroke: var(--accent);
+}
+
+.lines {
+  fill: var(--lines);
+}
+
+.hat {
+  fill: var(--hat);
+}
+
+.hair {
+  fill: var(--hair);
+}
+
+.king-clothes {
+  fill: var(--king-clothes);
+}
+
+.ace-qr {
+  fill: var(--ace-qr);
+}
+
+.ace-dotted {
+  stroke: var(--ace-center);
+}
+
+.ace-inner {
+  stroke: var(--background);
+}
+
+.ace-center {
+  fill: var(--ace-center);
+}
+
+.joker-outline {
+  stroke: var(--face-border);
+}
+
+.joker-hat {
+  fill: var(--joker-hat);
+}
+
+.joker-face {
+  fill: var(--joker-face);
+}
+
+.joker-eyes {
+  fill: var(--joker-eyes);
+}
+
