@@ -55,7 +55,7 @@ io.on('connection', socket => {
         console.log(`${socket.id} disconnected`);
         if(waiting[room]) {
             let removed = waiting[room].splice(waiting[room].findIndex((p: Player) => p.conn == socket), 1)[0];
-            if (waiting[room].length < 1) {
+            if (waiting[room]?.length < 1) {
                 delete waiting[room];
             } else {
                 if (removed.leader) {

@@ -1,1 +1,24 @@
+#palace-board {
+  height: 100vh;
+  width: 100vw;
+}
 
+.top {
+  height: 70vh;
+  width: 100vw;
+  background-color: yellow;
+}
+
+.bottom {
+  height: 30vh;
+  width: 100vw;
+  background-color: lime;
+}
+
+.card-group {
+  width: 60vw;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: auto;
+  justify-items: center;
+}

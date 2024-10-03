@@ -66,6 +66,11 @@ let cardsStr: {[key: string]: ReactElement} = {
     "BBl": <B1 />, "BRe": <B2 />,
 };
 
+interface CardProps {
+    card: { card: string } | { suit: Suit, value: number } | { joker: number } | { back: number };
+    onClick: () => void;
+}
+
 /**
  * Component to get a Card.
  * A card can be returned by either (1) a two-character
@@ -79,14 +84,20 @@ let cardsStr: {[key: string]: ReactElement} = {
  * Jokers can be obtained by passing the "joker" prop with value either 0 (monochrome) or 1 (colorful).
  * Card backs can be obtained by passing the "back" prop with value either 0 (black) or 1 (red).
  */
-export default function Card(props: { card: string } | { suit: Suit, value: number } | { joker: number } | { back: number }) {
-    if ("card" in props) return cardsStr[props.card];
-    else if ("suit" in props && "value" in props) return cards[props.suit][props.value];
-    else if ("joker" in props) return cards[Suit.Joker][props.joker];
-    else if ("back" in props) {
-        if (props.back == 1) return <B2 />
+export default function Card(props: CardProps) {
+    let toReturn;
+    if ("card" in props.card) toReturn = cardsStr[props.card.card];
+    else if ("suit" in props.card && "value" in props.card) toReturn = cards[props.card.suit][props.card.value];
+    else if ("joker" in props.card) toReturn = cards[Suit.Joker][props.card.joker];
+    else if ("back" in props.card) {
+        if (props.card.back == 1) toReturn = <B2 />
     }
-    return <B1 />;
+    else toReturn = <B1 />;
+    return (
+        <div className="card-wrapper" onClick={props.onClick}>
+            {toReturn}
+        </div>
+    );
 }
 
 

@@ -22,6 +22,21 @@
   --width: 160px;
   height: calc(var(--width) * 1.4);
   width: var(--width);
+  transition: 0.2s;
+}
+
+.card-wrapper {
+  z-index: 0;
+}
+
+.card-wrapper:hover {
+  transform: translateY(-40px);
+  transition: 0.2s;
+}
+
+.card-wrapper:hover~.card-wrapper {
+  z-index: 1;
+  transition: 0.2s ease-in-out;
 }
 
 .back-black {

@@ -12,6 +12,7 @@ export type ClientToServerEvents = {
     attemptJoin: (roomID: number, name: string) => void;
     startGame: (options: { nineReverse: boolean }) => void;
     test: () => void;
+    ready: () => void;
 }
 
 export type InterServerEvents = {

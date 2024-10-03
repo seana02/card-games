@@ -1,10 +1,10 @@
-import { Action, Player } from "../types/Player";
+import { Player } from "../types/Player";
 import { Card, Deck } from "../types/Deck";
 import { BroadcastOperator } from "socket.io";
+import { ServerToClientEvents, SocketData } from "types/Socket";
 import { DecorateAcknowledgementsWithMultipleResponses } from "socket.io/dist/typed-events";
-import * as socketTypes from '../types/Socket';
 
-type Room = BroadcastOperator<DecorateAcknowledgementsWithMultipleResponses<socketTypes.ServerToClientEvents>, socketTypes.SocketData>
+type Room = BroadcastOperator<DecorateAcknowledgementsWithMultipleResponses<ServerToClientEvents>, SocketData>;
 
 enum CardEffects {
     THREE_FORCEGIVE = 1 << 0,
@@ -47,12 +47,15 @@ export default class Palace {
     private _threePlayed: string;
     private _threeTarget: string;
 
+    private done = false;
     constructor(room: Room, players: Player[], cardRules: CardEffects[] = defaultEffects) {
         this._room = room;
         if (players.length < 1) throw Error("Requires at least 2 players");
         this._drawPile = new Deck(true);
         this._drawPile.shuffle();
         this._gameState = PalaceState.SETTING;
+        this._indexOf = {};
+        this._players = [];
         for (let i = 0; i < players.length; i++) {
             this._indexOf[players[i].uuid] = i;
             this._players.push({
@@ -68,10 +71,15 @@ export default class Palace {
         cardRules.forEach(e => this._cardEffects |= e);
 
         room.emit('gameStart');
-        
-        this._players.forEach(p => {
-            p.conn.emit('initialize', p.hand.map((c: Card) => ({ suit: c.suit, value: c.value })));
-        });
+
+        players.forEach(p => p.conn.on('ready', () => {
+            if (!this.done) {
+                this.done = true;
+                this._players.forEach(p => {
+                    p.conn.emit('initialize', p.hand.map((c: Card) => ({ suit: c.suit, value: c.value })));
+                });
+            }
+        }));
     }
 
     /**

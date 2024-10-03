@@ -42,7 +42,7 @@ export default function App() {
         console.log("Start failed:", msg);
     });
 
-    socket.on("initialize", () => {
+    socket.on("gameStart", () => {
         setScreen("palace");
     });
 
