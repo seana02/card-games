@@ -42,8 +42,8 @@ export default function App() {
         console.log("Start failed:", msg);
     });
 
-    socket.on("gameStart", () => {
-        setScreen("palace");
+    socket.on("gameStart", (game: string) => {
+        setScreen(game);
     });
 
     switch (screen) {

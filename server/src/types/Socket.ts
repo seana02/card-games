@@ -3,16 +3,17 @@ export type ServerToClientEvents = {
     join: (roomCreated: boolean, players: { name: string, leader: boolean }[]) => void;
     joinSpectator: () => void;
     lobbyPlayerUpdate: (newPlayer: {name: string, leader: boolean}[]) => void;
-    gameStart: () => void;
+    gameStart: (game: string) => void;
     initialize: (hand: { suit: number, value: number }[]) => void;
     startFailed: (msg: string) => void;
+    setupResponse: (success: boolean) => void;
 }
 
 export type ClientToServerEvents = {
     attemptJoin: (roomID: number, name: string) => void;
     startGame: (options: { nineReverse: boolean }) => void;
-    test: () => void;
     ready: () => void;
+    setup: (inds: number[]) => void;
 }
 
 export type InterServerEvents = {

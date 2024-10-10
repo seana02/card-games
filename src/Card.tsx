@@ -12,7 +12,7 @@ import CJ from './assets/cards/CJ'; import HJ from './assets/cards/HJ'; import S
 import CQ from './assets/cards/CQ'; import HQ from './assets/cards/HQ'; import SQ from './assets/cards/SQ'; import DQ from './assets/cards/DQ';  
 import CK from './assets/cards/CK'; import HK from './assets/cards/HK'; import SK from './assets/cards/SK'; import DK from './assets/cards/DK';  
 import B1 from './assets/cards/BBl'; import B2 from './assets/cards/BRe'; import J1 from './assets/cards/J1'; import J2 from './assets/cards/J2'; 
-import { ReactElement } from 'react';
+import { ReactElement, useState } from 'react';
 
 export enum Suit { Club, Heart, Spade, Diamond, Joker }
 
@@ -69,6 +69,7 @@ let cardsStr: {[key: string]: ReactElement} = {
 interface CardProps {
     card: { card: string } | { suit: Suit, value: number } | { joker: number } | { back: number };
     onClick: () => void;
+    className: string;
 }
 
 /**
@@ -85,6 +86,8 @@ interface CardProps {
  * Card backs can be obtained by passing the "back" prop with value either 0 (black) or 1 (red).
  */
 export default function Card(props: CardProps) {
+    let [selected, setSelected] = useState(false);
+
     let toReturn;
     if ("card" in props.card) toReturn = cardsStr[props.card.card];
     else if ("suit" in props.card && "value" in props.card) toReturn = cards[props.card.suit][props.card.value];
@@ -94,7 +97,7 @@ export default function Card(props: CardProps) {
     }
     else toReturn = <B1 />;
     return (
-        <div className="card-wrapper" onClick={props.onClick}>
+        <div className={`card-wrapper ${props.className}`} onClick={() => { setSelected(!selected); props.onClick(); }}>
             {toReturn}
         </div>
     );

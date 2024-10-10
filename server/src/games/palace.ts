@@ -70,16 +70,21 @@ export default class Palace {
         this._cardEffects = 0;
         cardRules.forEach(e => this._cardEffects |= e);
 
-        room.emit('gameStart');
+        room.emit('gameStart', "palace");
 
-        players.forEach(p => p.conn.on('ready', () => {
-            if (!this.done) {
-                this.done = true;
-                this._players.forEach(p => {
-                    p.conn.emit('initialize', p.hand.map((c: Card) => ({ suit: c.suit, value: c.value })));
-                });
-            }
-        }));
+        players.forEach(p => {
+            p.conn.on('ready', () => {
+                if (!this.done) {
+                    this.done = true;
+                    this._players.forEach(p => {
+                        p.conn.emit('initialize', p.hand.map((c: Card) => ({ suit: c.suit, value: c.value })));
+                        
+                    });
+                }
+            });
+
+            p.conn.on('setup', (inds) => p.conn.emit('setupResponse', this.revealCards(p.uuid, inds[0], inds[1], inds[2])));
+        });
     }
 
     /**
