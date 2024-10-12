@@ -1,9 +1,10 @@
 import { ClientToServerEvents, ServerToClientEvents } from "@backend/Socket";
-import { Dispatch, SetStateAction, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Socket } from "socket.io-client";
 import '../styles/palace.css';
 import '../styles/App.css';
 import Card from "../Card";
+import PalacePlayerCard from "../Components/PalacePlayerCard";
 
 interface PalaceProps {
     socket: Socket<ServerToClientEvents, ClientToServerEvents>
@@ -21,15 +22,21 @@ export default function Palace(props: PalaceProps) {
 
     const [hand, setHand] = useState<{suit:number, value:number, selected:boolean}[]>([]);
     const [state, setState] = useState(Game.SETUP);
+    const [playerList, setPlayerList] = useState<{name:string, id:number, displayed:({suit: number, value:number}|{back:number})[]}[]>([])
 
     props.socket.on('initialize', (h: { suit: number, value: number }[]) => {
         console.log('received initialize', h);
-        let hReady: { suit: number, value: number, selected: boolean }[] = [];
+        const hReady: { suit: number, value: number, selected: boolean }[] = [];
         h.forEach(c => hReady.push({ suit: c.suit, value: c.value, selected: false}));
         setHand(hReady);
     });
 
+    props.socket.on('playerList', players => {
+        setPlayerList(players);
+    });
+
     props.socket.on('setupResponse', (success: boolean) => {
+        console.log('setup response: ' + success);
         if (success) {
             setState(Game.SETUP_DONE);
         }
@@ -51,7 +58,9 @@ export default function Palace(props: PalaceProps) {
                     </div>
                 </div>
                 <div className="playerlist">
-
+                    <PalacePlayerCard
+                        players={playerList}
+                    />
                 </div>
             </div>
             <div className="bottom">
@@ -62,7 +71,7 @@ export default function Palace(props: PalaceProps) {
 
     function submit() {
         if (state === Game.SETUP) {
-            let inds = hand.map((c, i) => c.selected ? i : -1).filter(i => i !== -1);
+            const inds = hand.map((c, i) => c.selected ? i : -1).filter(i => i !== -1);
             if (inds.length < 3) {
                 console.log('not enough cards');
             } else {
@@ -86,14 +95,15 @@ export default function Palace(props: PalaceProps) {
     }
 
     function getCards() {
-        let content: React.JSX.Element[] = [];
+        const content: React.JSX.Element[] = [];
 
         hand.forEach((c, i) => {
             content.push(
                 <Card
                     card={c}
                     onClick={() => clickCard(i)}
-                    className={hand[i].selected ? "selected" : ""}
+                    className={"interactable " + (hand[i].selected ? "selected" : "")}
+                    clickable={true}
                 />
             );
         });

@@ -1,11 +1,11 @@
 #lobby-left {
   color: black;
-  flex-grow: 8;
+  width: 80vw;
 }
 
 #lobby-right {
   color: black;
-  flex-grow: 2;
+  width: 20vw;
   border-left: 2px solid black;
 }
 
@@ -16,4 +16,3 @@
   width: fit-content;
   padding: 0 8px;
 }
-

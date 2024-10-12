@@ -68,8 +68,9 @@ let cardsStr: {[key: string]: ReactElement} = {
 
 interface CardProps {
     card: { card: string } | { suit: Suit, value: number } | { joker: number } | { back: number };
-    onClick: () => void;
     className: string;
+    onClick: () => void;
+    clickable?: boolean;
 }
 
 /**
@@ -97,7 +98,12 @@ export default function Card(props: CardProps) {
     }
     else toReturn = <B1 />;
     return (
-        <div className={`card-wrapper ${props.className}`} onClick={() => { setSelected(!selected); props.onClick(); }}>
+        <div className={`card-wrapper ${props.className} ${props.clickable || false}`} onClick={() => {
+                if (props.clickable) {
+                    setSelected(!selected);
+                    props.onClick();
+                }
+            }}>
             {toReturn}
         </div>
     );

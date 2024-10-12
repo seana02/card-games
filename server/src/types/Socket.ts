@@ -1,3 +1,6 @@
+type Card = { suit: number, value: number };
+type Back = { back: number };
+
 export type ServerToClientEvents = {
     withAck: (d: string, callback: (e: number) => void) => void;
     join: (roomCreated: boolean, players: { name: string, leader: boolean }[]) => void;
@@ -7,6 +10,8 @@ export type ServerToClientEvents = {
     initialize: (hand: { suit: number, value: number }[]) => void;
     startFailed: (msg: string) => void;
     setupResponse: (success: boolean) => void;
+    playerList: (players: { name: string, id: number, displayed: (Card | Back)[] }[]) => void;
+    updateInfo: (id: number, data: { displayed: (Card | Back)[] }) => void;
 }
 
 export type ClientToServerEvents = {

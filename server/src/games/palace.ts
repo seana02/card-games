@@ -14,7 +14,7 @@ enum CardEffects {
     TEN_BOMB = 1 << 4,
 }
 
-let defaultEffects = [CardEffects.THREE_FORCEGIVE, CardEffects.SEVEN_BELOW, CardEffects.EIGHT_SKIP, CardEffects.TEN_BOMB];
+const defaultEffects = [CardEffects.THREE_FORCEGIVE, CardEffects.SEVEN_BELOW, CardEffects.EIGHT_SKIP, CardEffects.TEN_BOMB];
 
 enum PalaceState {
     SETTING,
@@ -30,6 +30,7 @@ interface PalacePlayer extends Player {
 
 export default class Palace {
     private _room: Room;
+    private _roomID: string;
     private _gameState: PalaceState;
 
     private _drawPile: Deck;
@@ -48,8 +49,9 @@ export default class Palace {
     private _threeTarget: string;
 
     private done = false;
-    constructor(room: Room, players: Player[], cardRules: CardEffects[] = defaultEffects) {
+    constructor(room: Room, roomID: string, players: Player[], cardRules: CardEffects[] = defaultEffects) {
         this._room = room;
+        this._roomID = roomID;
         if (players.length < 1) throw Error("Requires at least 2 players");
         this._drawPile = new Deck(true);
         this._drawPile.shuffle();
@@ -72,6 +74,8 @@ export default class Palace {
 
         room.emit('gameStart', "palace");
 
+        room.emit('playerList', this._players.map((p, i) => ({ name: p.name, id: i, displayed: [{ back: 1 },{ back: 1 },{ back: 1 }] })));
+
         players.forEach(p => {
             p.conn.on('ready', () => {
                 if (!this.done) {
@@ -83,7 +87,19 @@ export default class Palace {
                 }
             });
 
-            p.conn.on('setup', (inds) => p.conn.emit('setupResponse', this.revealCards(p.uuid, inds[0], inds[1], inds[2])));
+            p.conn.on('setup', (inds) => {
+                if (this.revealCards(p.uuid, inds[0], inds[1], inds[2])) {
+                    p.conn.emit('setupResponse', true);
+                    let thePlayer = this._players[this._indexOf[p.uuid]];
+                    p.conn.to(roomID).emit('updateInfo', this._indexOf[p.uuid], { displayed: [
+                        thePlayer.revealed[0] || thePlayer.hidden[0] ? { back: 1 } : null,
+                        thePlayer.revealed[1] || thePlayer.hidden[1] ? { back: 1 } : null,
+                        thePlayer.revealed[2] || thePlayer.hidden[2] ? { back: 1 } : null,
+                    ] });
+                } else {
+                    p.conn.emit('setupResponse', false);
+                }
+            });
         });
     }
 
@@ -102,13 +118,13 @@ export default class Palace {
      */
     public revealCards(uuid: string, i1: number, i2: number, i3: number): boolean {
         // ensure that 0 <= i1 < i2 < i3 < 6
-        if (this.checkValidIndices(uuid, [i1, i2, i3])) return false;
-        let inds = [i1, i2, i3].sort((a, b) => b - a);
+        if (!this.checkValidIndices(uuid, [i1, i2, i3])) return false;
+        const inds = [i1, i2, i3].sort((a, b) => b - a);
 
         // If the player already made their choice, don't try again
         if (this._players[this._indexOf[uuid]].ready) return false;
 
-        let player: PalacePlayer = this._players[this._indexOf[uuid]];
+        const player: PalacePlayer = this._players[this._indexOf[uuid]];
         // highest index first to avoid position shifting
         inds.forEach(i => player.revealed.push(player.hand.splice(i)[0]));
         player.ready = true;
@@ -139,8 +155,8 @@ export default class Palace {
         // only same-valued cards may be played at the same time
         if (!this.checkIdenticalValues(uuid, cards)) return false;
 
-        let playerHand = this._players[this._currentPlayer].hand;
-        let value = playerHand[cards[0]].value;
+        const playerHand = this._players[this._currentPlayer].hand;
+        const value = playerHand[cards[0]].value;
         
         // completions can be out of turn
         if (this.completes(uuid, playerHand)) {
@@ -181,8 +197,8 @@ export default class Palace {
         if (!this.checkIdenticalValues(uuid, cards)) return false;
         if (this._threeTarget && this._threeTarget != target) return false;
 
-        let playerHand = this._players[this._currentPlayer].hand;
-        let value = playerHand[cards[0]].value;
+        const playerHand = this._players[this._currentPlayer].hand;
+        const value = playerHand[cards[0]].value;
         if (value !== 3) return this.playCards(uuid, cards);
         
         if (!this._indexOf[target]) return false;
@@ -208,11 +224,11 @@ export default class Palace {
      * @returns validity
      */
     private checkPlayableOnTop(value: number) : boolean {
-        let top = this._discardPile.peek().value;
+        const top = this._discardPile.peek().value;
         if (!top) return true;
 
         // Note: Ace is 14
-        let reverse_flag : boolean = (this._cardEffects & CardEffects.SEVEN_BELOW) && (top === 7);
+        const reverse_flag : boolean = (this._cardEffects & CardEffects.SEVEN_BELOW) && (top === 7);
         switch(value) {
             case 2:
             case 3:
@@ -245,8 +261,8 @@ export default class Palace {
      * @returns boolean representing the given cards complete the set
      */
     private completes(uuid: string, cards: Card[]): boolean {
-        let val: number = cards[0].value;
-        let num: number = cards.length;
+        const val: number = cards[0].value;
+        const num: number = cards.length;
         for (let i = 1; i <= 4 - num; i++) {
            if (val !== this._discardPile.peek(i).value) {
                return false;
@@ -264,11 +280,11 @@ export default class Palace {
      */
     private checkValidIndices(uuid: string, indeces: number[]): boolean {
         // if there are too many cards specified, it is invalid
-        let hand_length = this._players[this._indexOf[uuid]].hand.length;
+        const hand_length = this._players[this._indexOf[uuid]].hand.length;
         if (indeces.length > hand_length) return false;
 
         // if there are duplicate indices, is it invalid
-        let map: boolean[] = Array(hand_length).fill(false);
+        const map: boolean[] = Array(hand_length).fill(false);
         indeces.forEach(i => {
             if (i < 0 || i >= hand_length || map[i]) return false;
             map[i] = true;
@@ -283,8 +299,8 @@ export default class Palace {
      * @return whether the cards are the same value or not
      */
     private checkIdenticalValues(uuid: string, cards: number[]) {
-        let playerHand = this._players[this._indexOf[uuid]].hand;
-        let value = playerHand[cards[0]].value;
+        const playerHand = this._players[this._indexOf[uuid]].hand;
+        const value = playerHand[cards[0]].value;
         cards.forEach(val => {
             if (playerHand[val].value !== value) {
                 return false;
@@ -310,7 +326,7 @@ export default class Palace {
      * Draw a card from the deck
      */
     public drawCard(uuid: string): boolean {
-        let card = this._drawPile.draw(1)[0];
+        const card = this._drawPile.draw(1)[0];
         if (!card) return false;
         this._players[this._indexOf[uuid]].hand.push(card);
         return true;

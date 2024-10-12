@@ -1,5 +1,8 @@
 export enum Suit { Club, Heart, Spade, Diamond, Joker }
 
+/**
+ * Contains a suit and value, and has comparison method
+ */
 export class Card {
     private _suit: Suit;
     private _value: number;

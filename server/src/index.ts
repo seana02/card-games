@@ -19,9 +19,9 @@ const io = new Server<
     }
 });
 
-let games: { [room: number]: Palace } = {};
-let waiting: { [room: number]: Player[] } = {};
-let playerList = (room: number) => waiting[room].map((p: Player) => ({ name: p.name, leader: p.leader }));
+const games: { [room: number]: Palace } = {};
+const waiting: { [room: number]: Player[] } = {};
+const playerList = (room: number) => waiting[room].map((p: Player) => ({ name: p.name, leader: p.leader }));
 
 io.on('connection', socket => {
     let room: number = null;
@@ -54,7 +54,7 @@ io.on('connection', socket => {
     socket.on('disconnect', () => {
         console.log(`${socket.id} disconnected`);
         if(waiting[room]) {
-            let removed = waiting[room].splice(waiting[room].findIndex((p: Player) => p.conn == socket), 1)[0];
+            const removed = waiting[room].splice(waiting[room].findIndex((p: Player) => p.conn == socket), 1)[0];
             if (waiting[room]?.length < 1) {
                 delete waiting[room];
             } else {
@@ -74,7 +74,7 @@ io.on('connection', socket => {
         }
 
         // TODO: card effects parameter
-        games[room] = new Palace(io.to(`${room}`), waiting[room]);
+        games[room] = new Palace(io.to(`${room}`), `${room}`, waiting[room]);
         delete waiting[room];
     });
 });

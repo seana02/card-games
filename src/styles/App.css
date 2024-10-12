@@ -23,6 +23,19 @@
   border: 2px solid black;
   margin: 8px 16px;
   display: flex;
+  align-items: center;
+}
+
+.display-card-group {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  gap: 4px;
+}
+
+.display-card * {
+  display: flex;
+  align-items: center;
 }
 
 .crown-space {
@@ -61,5 +74,4 @@
 }
 
 .game-board {
-  
 }

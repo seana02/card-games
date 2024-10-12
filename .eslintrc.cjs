@@ -15,5 +15,7 @@ module.exports = {
       { allowConstantExport: true },
     ],
     'tsdoc/syntax': 'warn',
+    'prefer-const': 'off',
+    'no-unused-vars': 'off',
   },
 }
