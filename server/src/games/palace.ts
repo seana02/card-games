@@ -75,7 +75,7 @@ export default class Palace {
 
         room.emit('gameStart', "palace");
 
-        room.emit('playerList', this._players.map((p, i) => ({ name: p.name, id: i, displayed: [{ back: 1 },{ back: 1 },{ back: 1 }] })));
+        room.emit('playerList', this._players.map((p, i) => ({ name: p.name, id: i, displayed: [{ back: 1 },{ back: 1 },{ back: 1 }], inHand: 6 })));
 
         players.forEach(p => {
             p.conn.on('ready', () => {
@@ -83,22 +83,24 @@ export default class Palace {
                     this.done = true;
                     this._players.forEach(p => {
                         p.conn.emit('initialize', p.hand.map((c: Card) => ({ suit: c.suit, value: c.value })));
-                        
                     });
                 }
             });
 
             p.conn.on('setup', (inds) => {
                 if (this.revealCards(p.uuid, inds[0], inds[1], inds[2])) {
-                    p.conn.emit('setupResponse', true);
                     let thePlayer = this._players[this._indexOf[p.uuid]];
-                    p.conn.to(roomID).emit('updateInfo', this._indexOf[p.uuid], { displayed: [
-                        thePlayer.revealed[0] || thePlayer.hidden[0] ? { back: 1 } : null,
-                        thePlayer.revealed[1] || thePlayer.hidden[1] ? { back: 1 } : null,
-                        thePlayer.revealed[2] || thePlayer.hidden[2] ? { back: 1 } : null,
-                    ] });
+                    p.conn.emit('setupResponse', true, thePlayer.hand.map((c: Card) => ({ suit: c.suit, value: c.value })));
+                    room.emit('updateInfo', this._indexOf[p.uuid], { 
+                        displayed: [
+                            thePlayer.revealed[0] ? ({ suit: thePlayer.revealed[0].suit, value: thePlayer.revealed[0].value }) : (thePlayer.hidden[0] ? { back: 1 } : null),
+                            thePlayer.revealed[1] ? ({ suit: thePlayer.revealed[1].suit, value: thePlayer.revealed[1].value }) : (thePlayer.hidden[1] ? { back: 1 } : null),
+                            thePlayer.revealed[2] ? ({ suit: thePlayer.revealed[2].suit, value: thePlayer.revealed[2].value }) : (thePlayer.hidden[2] ? { back: 1 } : null),
+                        ],
+                        inHand: thePlayer.hand.length
+                    });
                 } else {
-                    p.conn.emit('setupResponse', false);
+                    p.conn.emit('setupResponse', false, this._players[this._indexOf[p.uuid]].hand);
                 }
             });
         });

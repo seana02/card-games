@@ -1,16 +1,26 @@
-import { Component } from "react";
+import { Component, ReactElement } from "react";
 import Card from "../Card";
 
 interface CardProps {
-    players: { name: string, id: number, displayed: ({ suit: number, value: number } | { back: number })[] }[]
+    players: {
+        name: string,
+        id: number,
+        displayed: ({ suit: number, value: number } | { back: number })[],
+        inHand: number,
+    }[]
 }
 
 interface PlayerProps {
-    player: { name: string, id: number, displayed: ({ suit: number, value: number } | { back: number })[] }
+    player: {
+        name: string,
+        id: number,
+        displayed: ({ suit: number, value: number } | { back: number })[],
+        inHand: number,
+    }
 }
 
 export default function PalacePlayerCard(props: CardProps) {
-    let content = [];
+    let content: ReactElement[] = [];
 
     props.players.forEach(p => {
         content.push(
@@ -42,7 +52,7 @@ class PlayerCard extends Component<PlayerProps, {}> {
             <div className="player-card">
                 {this.props.player.name}
                 <div className="display-card-group">
-                    <div className="display-card">{2}</div>
+                    <div className="display-card">{this.props.player.inHand || 0}</div>
                     <div className="display-card">{this.getCard(this.props.player.displayed[0])}</div>
                     <div className="display-card">{this.getCard(this.props.player.displayed[1])}</div>
                     <div className="display-card">{this.getCard(this.props.player.displayed[2])}</div>

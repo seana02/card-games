@@ -9,9 +9,9 @@ export type ServerToClientEvents = {
     gameStart: (game: string) => void;
     initialize: (hand: { suit: number, value: number }[]) => void;
     startFailed: (msg: string) => void;
-    setupResponse: (success: boolean) => void;
-    playerList: (players: { name: string, id: number, displayed: (Card | Back)[] }[]) => void;
-    updateInfo: (id: number, data: { displayed: (Card | Back)[] }) => void;
+    setupResponse: (success: boolean, hand: { suit: number, value: number }[]) => void;
+    playerList: (players: { name: string, id: number, displayed: (Card | Back)[], inHand: number }[]) => void;
+    updateInfo: (id: number, data: { displayed: (Card | Back)[], inHand: number }) => void;
 }
 
 export type ClientToServerEvents = {

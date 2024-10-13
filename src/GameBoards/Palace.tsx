@@ -18,11 +18,18 @@ enum Game {
     FINISHED,
 }
 
+interface playerListTemplate {
+    name: string,
+    id: number,
+    displayed: ( { suit: number, value:number } | { back:number })[],
+    inHand: number,
+}
+
 export default function Palace(props: PalaceProps) {
 
     const [hand, setHand] = useState<{suit:number, value:number, selected:boolean}[]>([]);
     const [state, setState] = useState(Game.SETUP);
-    const [playerList, setPlayerList] = useState<{name:string, id:number, displayed:({suit: number, value:number}|{back:number})[]}[]>([])
+    const [playerList, setPlayerList] = useState<playerListTemplate[]>([])
 
     props.socket.on('initialize', (h: { suit: number, value: number }[]) => {
         console.log('received initialize', h);
@@ -35,12 +42,14 @@ export default function Palace(props: PalaceProps) {
         setPlayerList(players);
     });
 
-    props.socket.on('setupResponse', (success: boolean) => {
-        console.log('setup response: ' + success);
+    props.socket.on('setupResponse', (success: boolean, hand: { suit: number, value: number }[]) => {
         if (success) {
             setState(Game.SETUP_DONE);
+            setHand(hand.map(c => ({ ...c, selected: false })));
         }
     });
+
+    props.socket.on('updateInfo', updatePlayerList);
     
     useEffect(() => { props.socket.emit('ready') }, []);
 
@@ -117,6 +126,23 @@ export default function Palace(props: PalaceProps) {
             case Game.SETUP:
             case Game.IN_TURN: return "enabled"
             default: return "disabled"
+        }
+    }
+
+    type data = {
+        displayed: ( {suit: number, value:number} | {back:number} )[],
+        inHand: number
+    }
+    function updatePlayerList(id: number, data: data) {
+        if (data.displayed) {
+            setPlayerList(playerList.map(p => {
+                if (p.id !== id) return p;
+                return {
+                    ...p,
+                    displayed: data.displayed,
+                    inHand: data.inHand,
+                }
+            }));
         }
     }
 
