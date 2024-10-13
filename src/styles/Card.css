@@ -47,6 +47,13 @@
   --width: 2rem;
 }
 
+.draw-pile .card-wrapper {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 .back-black {
   fill: var(--black-back);
 }

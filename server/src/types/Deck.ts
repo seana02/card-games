@@ -153,5 +153,8 @@ export class Deck {
     public clear() {
         this._deck = [];
     }
+    public get length() {
+        return this._deck.length;
+    }
 
 }

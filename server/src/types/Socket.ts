@@ -7,11 +7,12 @@ export type ServerToClientEvents = {
     joinSpectator: () => void;
     lobbyPlayerUpdate: (newPlayer: {name: string, leader: boolean}[]) => void;
     gameStart: (game: string) => void;
-    initialize: (hand: { suit: number, value: number }[]) => void;
+    initialize: (hand: { suit: number, value: number }[], pileCount: number) => void;
     startFailed: (msg: string) => void;
     setupResponse: (success: boolean, hand: { suit: number, value: number }[]) => void;
     playerList: (players: { name: string, id: number, displayed: (Card | Back)[], inHand: number }[]) => void;
     updateInfo: (id: number, data: { displayed: (Card | Back)[], inHand: number }) => void;
+    setupComplete: () => void;
 }
 
 export type ClientToServerEvents = {

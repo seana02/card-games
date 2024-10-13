@@ -82,7 +82,7 @@ export default class Palace {
                 if (!this.done) {
                     this.done = true;
                     this._players.forEach(p => {
-                        p.conn.emit('initialize', p.hand.map((c: Card) => ({ suit: c.suit, value: c.value })));
+                        p.conn.emit('initialize', p.hand.map((c: Card) => ({ suit: c.suit, value: c.value })), this._drawPile.length);
                     });
                 }
             });
@@ -137,6 +137,7 @@ export default class Palace {
         });
         if (flag) return true;
         this._gameState = PalaceState.IN_GAME;
+        this._room.emit('setupComplete');
         return true;
     }
 

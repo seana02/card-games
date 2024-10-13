@@ -29,13 +29,17 @@ export default function Palace(props: PalaceProps) {
 
     const [hand, setHand] = useState<{suit:number, value:number, selected:boolean}[]>([]);
     const [state, setState] = useState(Game.SETUP);
-    const [playerList, setPlayerList] = useState<playerListTemplate[]>([])
+    const [playerList, setPlayerList] = useState<playerListTemplate[]>([]);
 
-    props.socket.on('initialize', (h: { suit: number, value: number }[]) => {
+    const [discard, setDiscard] = useState<{suit: number, value: number}|null>(null);
+    const [pileCount, setPileCount] = useState(0);
+
+    props.socket.on('initialize', (h: { suit: number, value: number }[], pC: number) => {
         console.log('received initialize', h);
         const hReady: { suit: number, value: number, selected: boolean }[] = [];
         h.forEach(c => hReady.push({ suit: c.suit, value: c.value, selected: false}));
         setHand(hReady);
+        setPileCount(pC);
     });
 
     props.socket.on('playerList', players => {
@@ -50,13 +54,30 @@ export default function Palace(props: PalaceProps) {
     });
 
     props.socket.on('updateInfo', updatePlayerList);
+
+    props.socket.on('setupComplete', () => {
+        setState(Game.OUT_TURN);
+    });
     
+    // emits the ready signal only on the first load
     useEffect(() => { props.socket.emit('ready') }, []);
 
     return (
         <div className="game-board" id="palace-board">
             <div className="top">
                 <div className="main">
+                    <div className="main-deck">
+                        <div className="discard-pile">
+                            {
+                                discard ? <Card card={discard} className={""} onClick={() => {}} /> : <></>
+                            }
+                        </div>
+                        <div className="draw-pile">
+                            <Card card={{back: 0}} className={""} onClick={() => {}}>
+                                <div className="draw-pile-count">{pileCount}</div>
+                            </Card>
+                        </div>
+                    </div>
                     <div className="action-buttons">
                         <div className={`action button-submit ${isButtonActive()}`} onClick={submit}>
                             Send

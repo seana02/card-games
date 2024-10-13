@@ -71,6 +71,7 @@ interface CardProps {
     className: string;
     onClick: () => void;
     clickable?: boolean;
+    children?: JSX.Element;
 }
 
 /**
@@ -93,9 +94,7 @@ export default function Card(props: CardProps) {
     if ("card" in props.card) toReturn = cardsStr[props.card.card];
     else if ("suit" in props.card && "value" in props.card) toReturn = cards[props.card.suit][props.card.value];
     else if ("joker" in props.card) toReturn = cards[Suit.Joker][props.card.joker];
-    else if ("back" in props.card) {
-        if (props.card.back == 1) toReturn = <B2 />
-    }
+    else if ("back" in props.card && props.card.back == 1) toReturn = <B2 />;
     else toReturn = <B1 />;
     return (
         <div className={`card-wrapper ${props.className} ${props.clickable || false}`} onClick={() => {
@@ -105,6 +104,7 @@ export default function Card(props: CardProps) {
                 }
             }}>
             {toReturn}
+            {props.children ? props.children : <></>}
         </div>
     );
 }

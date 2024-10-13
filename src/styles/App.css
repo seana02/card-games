@@ -26,18 +26,6 @@
   align-items: center;
 }
 
-.display-card-group {
-  display: flex;
-  align-items: center;
-  margin-left: auto;
-  gap: 4px;
-}
-
-.display-card * {
-  display: flex;
-  align-items: center;
-}
-
 .crown-space {
   width: 28px;
 }
