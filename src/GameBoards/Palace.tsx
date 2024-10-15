@@ -31,7 +31,7 @@ export default function Palace(props: PalaceProps) {
     const [state, setState] = useState(Game.SETUP);
     const [playerList, setPlayerList] = useState<playerListTemplate[]>([]);
 
-    const [discard, setDiscard] = useState<{suit: number, value: number}|null>(null);
+    const [discard, setDiscard] = useState<{suit: number, value: number}[]>([]);
     const [pileCount, setPileCount] = useState(0);
 
     props.socket.on('initialize', (h: { suit: number, value: number }[], pC: number) => {
@@ -55,8 +55,23 @@ export default function Palace(props: PalaceProps) {
 
     props.socket.on('updateInfo', updatePlayerList);
 
-    props.socket.on('setupComplete', () => {
-        setState(Game.OUT_TURN);
+    props.socket.on('setupComplete', () => { setState(Game.OUT_TURN); });
+
+    props.socket.on('startTurn', () => { setState(Game.IN_TURN); });
+
+    props.socket.on('endTurn', () => { setState(Game.OUT_TURN); });
+
+    props.socket.on('playSuccess', (cards: { suit: number, value: number }[]) => {
+        const newHand = hand.filter(c => !c.selected);
+        console.log('remaining: ', newHand);
+        cards.forEach(c => newHand.push({ suit: c.suit, value: c.value, selected: false }));
+        console.log('after adding:', cards, 'new hand:', newHand);
+        setHand(newHand);
+    });
+
+    props.socket.on('updateCenter', (cards: { suit: number, value: number }[], count: number) => {
+        setDiscard(cards);
+        setPileCount(count);
     });
     
     // emits the ready signal only on the first load
@@ -67,11 +82,7 @@ export default function Palace(props: PalaceProps) {
             <div className="top">
                 <div className="main">
                     <div className="main-deck">
-                        <div className="discard-pile">
-                            {
-                                discard ? <Card card={discard} className={""} onClick={() => {}} /> : <></>
-                            }
-                        </div>
+                        {getDiscardPile()}
                         <div className="draw-pile">
                             <Card card={{back: 0}} className={""} onClick={() => {}}>
                                 <div className="draw-pile-count">{pileCount}</div>
@@ -79,10 +90,10 @@ export default function Palace(props: PalaceProps) {
                         </div>
                     </div>
                     <div className="action-buttons">
-                        <div className={`action button-submit ${isButtonActive()}`} onClick={submit}>
+                        <div className={`action button-submit ${isButtonActive()[0]}`} onClick={submit}>
                             Send
                         </div>
-                        <div className={`action button-completion ${isButtonActive()}`} onClick={completion}>
+                        <div className={`action button-completion ${isButtonActive()[1]}`} onClick={completion}>
                             Complete
                         </div>
                     </div>
@@ -100,13 +111,18 @@ export default function Palace(props: PalaceProps) {
     );
 
     function submit() {
-        if (state === Game.SETUP) {
-            const inds = hand.map((c, i) => c.selected ? i : -1).filter(i => i !== -1);
-            if (inds.length < 3) {
-                console.log('not enough cards');
-            } else {
-                console.log(inds);
-                props.socket.emit('setup', inds);               
+        const inds = hand.map((c, i) => c.selected ? i : -1).filter(i => i !== -1);
+        switch (state) {
+            case Game.SETUP: {
+                if (inds.length < 3) {
+                    console.log('not enough cards');
+                } else {
+                    props.socket.emit('setup', inds);               
+                }
+                break;
+            }
+            case Game.IN_TURN: {
+                props.socket.emit('playCards', inds);
             }
         }
     }
@@ -142,11 +158,27 @@ export default function Palace(props: PalaceProps) {
         );
     }
 
+    function getDiscardPile() {
+        let content: React.JSX.Element[] = [];
+        discard.forEach(c => content.push(
+            <Card card={c} className={""} onClick={() => {}} />
+        ));
+
+        return (
+            <div className="discard-pile" style={{gridTemplateColumns: `repeat(${content.length}, calc(10vw / ${content.length}))`}}>
+                {content}
+            </div>
+        );
+    }
+
     function isButtonActive() {
         switch (state) {
             case Game.SETUP:
-            case Game.IN_TURN: return "enabled"
-            default: return "disabled"
+            case Game.IN_TURN:
+                return ["enabled", "enabled"]
+            case Game.OUT_TURN:
+                return ["disabled", "enabled"]
+            default: return ["disabled", "disabled"]
         }
     }
 

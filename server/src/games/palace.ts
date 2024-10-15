@@ -55,6 +55,7 @@ export default class Palace {
         if (players.length < 1) throw Error("Requires at least 2 players");
         this._drawPile = new Deck(true);
         this._drawPile.shuffle();
+        this._discardPile = new Deck();
         this._gameState = PalaceState.SETTING;
         this._indexOf = {};
         this._players = [];
@@ -77,7 +78,9 @@ export default class Palace {
 
         room.emit('playerList', this._players.map((p, i) => ({ name: p.name, id: i, displayed: [{ back: 1 },{ back: 1 },{ back: 1 }], inHand: 6 })));
 
-        players.forEach(p => {
+        this._players.forEach(p => {
+            let thePlayer = this._players[this._indexOf[p.uuid]];
+
             p.conn.on('ready', () => {
                 if (!this.done) {
                     this.done = true;
@@ -87,22 +90,46 @@ export default class Palace {
                 }
             });
 
-            p.conn.on('setup', (inds) => {
+            p.conn.on('setup', inds => {
                 if (this.revealCards(p.uuid, inds[0], inds[1], inds[2])) {
-                    let thePlayer = this._players[this._indexOf[p.uuid]];
                     p.conn.emit('setupResponse', true, thePlayer.hand.map((c: Card) => ({ suit: c.suit, value: c.value })));
-                    room.emit('updateInfo', this._indexOf[p.uuid], { 
-                        displayed: [
-                            thePlayer.revealed[0] ? ({ suit: thePlayer.revealed[0].suit, value: thePlayer.revealed[0].value }) : (thePlayer.hidden[0] ? { back: 1 } : null),
-                            thePlayer.revealed[1] ? ({ suit: thePlayer.revealed[1].suit, value: thePlayer.revealed[1].value }) : (thePlayer.hidden[1] ? { back: 1 } : null),
-                            thePlayer.revealed[2] ? ({ suit: thePlayer.revealed[2].suit, value: thePlayer.revealed[2].value }) : (thePlayer.hidden[2] ? { back: 1 } : null),
-                        ],
-                        inHand: thePlayer.hand.length
+                    room.emit('updateInfo', this._indexOf[p.uuid], this.getPlayerInfo(thePlayer));
+                    let flag = false;
+                    this._players.forEach(i => {
+                        if (!i.ready) flag = true;
                     });
+                    if (!flag) {
+                        this._gameState = PalaceState.IN_GAME;
+                        this._currentPlayer = 0;
+                        this._room.emit('setupComplete');
+                        this._players[this._currentPlayer].conn.emit('startTurn');
+                    }
                 } else {
-                    p.conn.emit('setupResponse', false, this._players[this._indexOf[p.uuid]].hand);
+                    p.conn.emit('setupResponse', false, thePlayer.hand);
                 }
             });
+
+            p.conn.on('playCards', inds => {
+                if (this.playCards(p.uuid, inds)) {
+                    if (this._drawPile.length > 0 && thePlayer.hand.length < 3) {
+                        p.conn.emit('playSuccess', this.drawCard(p.uuid, 3 - thePlayer.hand.length).map((c: Card) => ({ suit: c.suit, value: c.value })));
+                    }
+                    room.emit('updateInfo', this._indexOf[p.uuid], this.getPlayerInfo(thePlayer));
+                    room.emit('updateCenter', inds.map((_, i) => ({ suit: this._discardPile.peek(i).suit, value: this._discardPile.peek(i).value })), this._drawPile.length);
+                    this._players[this._currentPlayer].conn.emit('startTurn');
+                }
+            });
+        });
+    }
+    
+    private getPlayerInfo(player: PalacePlayer) {
+        return ({ 
+            displayed: [
+                player.revealed[0] ? ({ suit: player.revealed[0].suit, value: player.revealed[0].value }) : (player.hidden[0] ? { back: 1 } : null),
+                player.revealed[1] ? ({ suit: player.revealed[1].suit, value: player.revealed[1].value }) : (player.hidden[1] ? { back: 1 } : null),
+                player.revealed[2] ? ({ suit: player.revealed[2].suit, value: player.revealed[2].value }) : (player.hidden[2] ? { back: 1 } : null),
+            ],
+            inHand: player.hand.length
         });
     }
 
@@ -131,13 +158,6 @@ export default class Palace {
         // highest index first to avoid position shifting
         inds.forEach(i => player.revealed.push(player.hand.splice(i, 1)[0]));
         player.ready = true;
-        let flag = false;
-        this._players.forEach(i => {
-            if (!i.ready) flag = true;
-        });
-        if (flag) return true;
-        this._gameState = PalaceState.IN_GAME;
-        this._room.emit('setupComplete');
         return true;
     }
 
@@ -145,6 +165,7 @@ export default class Palace {
      * Determines and goes to the next player
      */
     public nextPlayer() {
+        this._players[this._currentPlayer].conn.emit('endTurn');
         this._currentPlayer = (this._currentPlayer + (this._reversed ? -1 : 1)) % this._players.length;
     }
 
@@ -191,8 +212,9 @@ export default class Palace {
             this._reversed = !this._reversed;
         } else if (this._cardEffects & CardEffects.TEN_BOMB && value === 10) {
             this.bombCenter();
+            return; // don't move players
         }
-    
+        
         this.nextPlayer();
 
         return true;
@@ -230,7 +252,7 @@ export default class Palace {
      * @returns validity
      */
     public checkPlayableOnTop(value: number) : boolean {
-        const top = this._discardPile.peek().value;
+        const top = this._discardPile.peek()?.value;
         if (!top) return true;
 
         // Note: Ace is 14
@@ -270,9 +292,9 @@ export default class Palace {
         const val: number = cards[0].value;
         const num: number = cards.length;
         for (let i = 1; i <= 4 - num; i++) {
-           if (val !== this._discardPile.peek(i).value) {
-               return false;
-           } 
+            if (!this._discardPile.peek(i) || val !== this._discardPile.peek(i).value) {
+                return false;
+            } 
         }
         return true;
     }
@@ -331,11 +353,11 @@ export default class Palace {
     /**
      * Draw a card from the deck
      */
-    public drawCard(uuid: string): boolean {
-        const card = this._drawPile.draw(1)[0];
-        if (!card) return false;
-        this._players[this._indexOf[uuid]].hand.push(card);
-        return true;
+    public drawCard(uuid: string, count: number): Card[] {
+        const cards = this._drawPile.draw(count);
+        if (!cards || cards.length < 1) return [];
+        cards.forEach(c => this._players[this._indexOf[uuid]].hand.push(c));
+        return cards;
     }
 }
 

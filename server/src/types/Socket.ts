@@ -13,6 +13,10 @@ export type ServerToClientEvents = {
     playerList: (players: { name: string, id: number, displayed: (Card | Back)[], inHand: number }[]) => void;
     updateInfo: (id: number, data: { displayed: (Card | Back)[], inHand: number }) => void;
     setupComplete: () => void;
+    startTurn: () => void;
+    endTurn: () => void;
+    playSuccess: (cards: Card[]) => void;
+    updateCenter: (cards: Card[], count: number) => void;
 }
 
 export type ClientToServerEvents = {
@@ -20,6 +24,7 @@ export type ClientToServerEvents = {
     startGame: (options: { nineReverse: boolean }) => void;
     ready: () => void;
     setup: (inds: number[]) => void;
+    playCards: (inds: number[]) => void;
 }
 
 export type InterServerEvents = {
