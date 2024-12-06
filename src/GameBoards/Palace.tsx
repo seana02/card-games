@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Socket } from "socket.io-client";
 import '../styles/palace.css';
 import '../styles/App.css';
-import Card from "../Card";
+import Card, { Suit } from "../Card";
 import PalacePlayerCard from "../Components/PalacePlayerCard";
 
 interface PalaceProps {
@@ -25,9 +25,30 @@ interface playerListTemplate {
     inHand: number,
 }
 
+const ordering: {[value: number]: number} = {
+    1: 10,
+    2: 11,
+    3: 13,
+    4: 1,
+    5: 2,
+    6: 3,
+    7: 4,
+    8: 5,
+    9: 6,
+    10: 12,
+    11: 7,
+    12: 8,
+    13: 9,
+    14: 10,
+}
+
 export default function Palace(props: PalaceProps) {
 
-    const [hand, setHand] = useState<{suit:number, value:number, selected:boolean}[]>([]);
+    const [hand, _setHand] = useState<{suit:number, value:number, selected:boolean}[]>([]);
+    function setHand(newHand: { suit: number, value: number, selected: boolean }[]) {
+        sortHand(newHand);
+        _setHand(newHand);
+    }
     const [state, setState] = useState(Game.SETUP);
     const [playerList, setPlayerList] = useState<playerListTemplate[]>([]);
 
@@ -63,9 +84,7 @@ export default function Palace(props: PalaceProps) {
 
     props.socket.on('playSuccess', (cards: { suit: number, value: number }[]) => {
         const newHand = hand.filter(c => !c.selected);
-        console.log('remaining: ', newHand);
         cards.forEach(c => newHand.push({ suit: c.suit, value: c.value, selected: false }));
-        console.log('after adding:', cards, 'new hand:', newHand);
         setHand(newHand);
     });
 
@@ -131,6 +150,15 @@ export default function Palace(props: PalaceProps) {
 
     }
     
+    function sortHand(newHand: { suit: number, value: number, selected: boolean }[]) {
+        return newHand.sort((a, b) => {
+            if (a.suit == Suit.Joker && b.suit == Suit.Joker) return a.value - b.value;
+            else if (a.suit == Suit.Joker) return 1;
+            else if (b.suit == Suit.Joker) return -1;
+            return ordering[a.value] - ordering[b.value];
+        });
+    }
+
     function clickCard(i: number) {
         setHand(hand.map((ca, ia) => {
             if (ia == i && (state !== 0 || ca.selected || hand.reduce((x, c) => x + (+c.selected), 0) < 3)) {
@@ -165,10 +193,14 @@ export default function Palace(props: PalaceProps) {
         ));
 
         return (
-            <div className="discard-pile" style={{gridTemplateColumns: `repeat(${content.length}, calc(10vw / ${content.length}))`}}>
+            <div className="discard-pile" style={{gridTemplateColumns: `repeat(${content.length}, 1vw)`, width: `max(8rem, calc(8rem + ${content.length - 1}vw))`}} onClick={takeDiscard}>
                 {content}
             </div>
         );
+    }
+
+    function takeDiscard() {
+        props.socket.emit('takeCards');
     }
 
     function isButtonActive() {

@@ -1,5 +1,5 @@
 import { Player } from "../types/Player";
-import { Card, Deck } from "../types/Deck";
+import { Card, Deck, Suit } from "../types/Deck";
 import { BroadcastOperator } from "socket.io";
 import { ServerToClientEvents, SocketData } from "types/Socket";
 import { DecorateAcknowledgementsWithMultipleResponses } from "socket.io/dist/typed-events";
@@ -26,6 +26,24 @@ export interface PalacePlayer extends Player {
     revealed: Card[],
     hand: Card[],
     ready: boolean,
+}
+
+
+const ordering: {[value: number]: number} = {
+    1: 10,
+    2: 11,
+    3: 13,
+    4: 1,
+    5: 2,
+    6: 3,
+    7: 4,
+    8: 5,
+    9: 6,
+    10: 12,
+    11: 7,
+    12: 8,
+    13: 9,
+    14: 10,
 }
 
 export default class Palace {
@@ -69,6 +87,7 @@ export default class Palace {
                 hand: this._drawPile.draw(6),
                 ready: false,
             });
+            this.sortHand(p);
         }
         this._reversed = false;
         this._cardEffects = 0;
@@ -76,7 +95,7 @@ export default class Palace {
 
         room.emit('gameStart', "palace");
 
-        room.emit('playerList', this._players.map((p, i) => ({ name: p.name, id: i, displayed: [{ back: 1 },{ back: 1 },{ back: 1 }], inHand: 6 })));
+        room.emit('playerList', this._players.map((p, i) => ({ name: p.name, id: i, displayed: [{ back: 1 }, { back: 1 }, { back: 1 }], inHand: 6 })));
 
         this._players.forEach(p => {
             let thePlayer = this._players[this._indexOf[p.uuid]];
@@ -113,17 +132,30 @@ export default class Palace {
                 if (this.playCards(p.uuid, inds)) {
                     if (this._drawPile.length > 0 && thePlayer.hand.length < 3) {
                         p.conn.emit('playSuccess', this.drawCard(p.uuid, 3 - thePlayer.hand.length).map((c: Card) => ({ suit: c.suit, value: c.value })));
+                    } else {
+                        p.conn.emit('playSuccess', []);
                     }
                     room.emit('updateInfo', this._indexOf[p.uuid], this.getPlayerInfo(thePlayer));
-                    room.emit('updateCenter', inds.map((_, i) => ({ suit: this._discardPile.peek(i).suit, value: this._discardPile.peek(i).value })), this._drawPile.length);
+                    room.emit('updateCenter', inds.map((_, i) => ({ suit: this._discardPile.peek(i+1).suit, value: this._discardPile.peek(i+1).value })), this._drawPile.length);
                     this._players[this._currentPlayer].conn.emit('startTurn');
                 }
             });
+
+            p.conn.on('takeCards', () => {
+                if (this._indexOf[p.uuid] != this._currentPlayer) return;
+                if (this._discardPile.length > 0) {
+                    p.conn.emit('playSuccess', this.takeCards(p.uuid).map((c: Card) => ({ suit: c.suit, value: c.value })));
+                }
+                this.nextPlayer();
+                room.emit('updateInfo', this._indexOf[p.uuid], this.getPlayerInfo(thePlayer));
+                room.emit('updateCenter', [], this._drawPile.length);
+                this._players[this._currentPlayer].conn.emit('startTurn');
+            });
         });
     }
-    
+
     private getPlayerInfo(player: PalacePlayer) {
-        return ({ 
+        return ({
             displayed: [
                 player.revealed[0] ? ({ suit: player.revealed[0].suit, value: player.revealed[0].value }) : (player.hidden[0] ? { back: 1 } : null),
                 player.revealed[1] ? ({ suit: player.revealed[1].suit, value: player.revealed[1].value }) : (player.hidden[1] ? { back: 1 } : null),
@@ -164,9 +196,18 @@ export default class Palace {
     /**
      * Determines and goes to the next player
      */
-    public nextPlayer() {
+    public nextPlayer(skip: number = 0) {
         this._players[this._currentPlayer].conn.emit('endTurn');
-        this._currentPlayer = (this._currentPlayer + (this._reversed ? -1 : 1)) % this._players.length;
+        this._currentPlayer = (this._currentPlayer + (this._reversed ? -1 : 1) * (1 + skip)) % this._players.length;
+    }
+
+    public sortHand(uuid: string) {
+        this._players[this._indexOf[uuid]].hand.sort((a, b) => {
+            if (a.suit == Suit.Joker && b.suit == Suit.Joker) return a.value - b.value;
+            else if (a.suit == Suit.Joker) return 1;
+            else if (b.suit == Suit.Joker) return -1;
+            return ordering[a.value] - ordering[b.value];
+        });
     }
 
     /**
@@ -184,7 +225,7 @@ export default class Palace {
 
         const playerHand = this._players[this._currentPlayer].hand;
         const value = playerHand[cards[0]].value;
-        
+
         // completions can be out of turn
         if (this.completes(uuid, playerHand)) {
             cards.sort((a, b) => (b - a));
@@ -193,7 +234,7 @@ export default class Palace {
             this._currentPlayer = this._indexOf[uuid];
             return true;
         }
-        
+
         if (this._indexOf[uuid] !== this._currentPlayer) {
             return false;
         }
@@ -204,18 +245,19 @@ export default class Palace {
 
         cards.forEach(i => this._discardPile.add(playerHand.splice(i, 1)[0]));
 
+        let skipCount = 0;
         if (this._cardEffects & CardEffects.THREE_FORCEGIVE && value === 3) {
             // 3 is played
         } else if (this._cardEffects & CardEffects.EIGHT_SKIP && value === 8) {
-            this.nextPlayer();
+            skipCount = cards.length;
         } else if (this._cardEffects & CardEffects.NINE_REVERSE && value === 9) {
             this._reversed = !this._reversed;
         } else if (this._cardEffects & CardEffects.TEN_BOMB && value === 10) {
             this.bombCenter();
             return; // don't move players
         }
-        
-        this.nextPlayer();
+
+        this.nextPlayer(skipCount);
 
         return true;
     }
@@ -228,7 +270,7 @@ export default class Palace {
         const playerHand = this._players[this._currentPlayer].hand;
         const value = playerHand[cards[0]].value;
         if (value !== 3) return this.playCards(uuid, cards);
-        
+
         if (!this._indexOf[target]) return false;
 
         this._threePlayed = uuid;
@@ -251,13 +293,13 @@ export default class Palace {
      * @param value the value of the card played
      * @returns validity
      */
-    public checkPlayableOnTop(value: number) : boolean {
+    public checkPlayableOnTop(value: number): boolean {
         const top = this._discardPile.peek()?.value;
         if (!top) return true;
 
         // Note: Ace is 14
-        const reverse_flag : boolean = (this._cardEffects & CardEffects.SEVEN_BELOW) && (top === 7);
-        switch(value) {
+        const reverse_flag: boolean = (this._cardEffects & CardEffects.SEVEN_BELOW) && (top === 7);
+        switch (value) {
             case 2:
             case 3:
             case 10: return true;
@@ -267,7 +309,7 @@ export default class Palace {
             case 7: return top <= value || reverse_flag;
             case 8:
             case 9:
-            case 11: 
+            case 11:
             case 12:
             case 13: return !reverse_flag && top <= value;
             case 14: return !reverse_flag;
@@ -290,11 +332,11 @@ export default class Palace {
      */
     public completes(uuid: string, cards: Card[]): boolean {
         const val: number = cards[0].value;
-        const num: number = cards.length;
-        for (let i = 1; i <= 4 - num; i++) {
+        const n: number = cards.length;
+        for (let i = 1; i <= 4 - n; i++) {
             if (!this._discardPile.peek(i) || val !== this._discardPile.peek(i).value) {
                 return false;
-            } 
+            }
         }
         return true;
     }
@@ -338,16 +380,19 @@ export default class Palace {
     }
 
     /**
-     * Takes from the deck
+     * Removes cards from center pile and returns it
      * @param uuid player to take
      */
-    public takeCards(uuid: string): boolean {
+    public takeCards(uuid: string): Card[] {
         if (this._indexOf[uuid] != this._currentPlayer) {
-            return false;
+            return [];
         }
-        this._players[this._currentPlayer].hand.push(...this._discardPile.cards);
+        const cards = [...this._discardPile.cards];
+        if (!cards || cards.length < 1) return [];
+        this._players[this._indexOf[uuid]].hand.push(...cards);
+        this.sortHand(uuid);
         this._discardPile.clear();
-        return true;
+        return cards;
     }
 
     /**
@@ -357,6 +402,7 @@ export default class Palace {
         const cards = this._drawPile.draw(count);
         if (!cards || cards.length < 1) return [];
         cards.forEach(c => this._players[this._indexOf[uuid]].hand.push(c));
+        this.sortHand(uuid);
         return cards;
     }
 }

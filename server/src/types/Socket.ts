@@ -25,6 +25,7 @@ export type ClientToServerEvents = {
     ready: () => void;
     setup: (inds: number[]) => void;
     playCards: (inds: number[]) => void;
+    takeCards: () => void;
 }
 
 export type InterServerEvents = {
