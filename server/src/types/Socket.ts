@@ -16,6 +16,7 @@ export type ServerToClientEvents = {
     startTurn: () => void;
     endTurn: () => void;
     playSuccess: (cards: Card[]) => void;
+    takeSuccess: (cards: Card[]) => void;
     updateCenter: (cards: Card[], count: number) => void;
 }
 

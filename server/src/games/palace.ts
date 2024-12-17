@@ -136,7 +136,11 @@ export default class Palace {
                         p.conn.emit('playSuccess', []);
                     }
                     room.emit('updateInfo', this._indexOf[p.uuid], this.getPlayerInfo(thePlayer));
-                    room.emit('updateCenter', inds.map((_, i) => ({ suit: this._discardPile.peek(i+1).suit, value: this._discardPile.peek(i+1).value })), this._drawPile.length);
+                    if (this._discardPile.length > 0) {
+                        room.emit('updateCenter', inds.map((_, i) => ({ suit: this._discardPile.peek(i+1).suit, value: this._discardPile.peek(i+1).value })), this._drawPile.length);
+                    } else {
+                        room.emit('updateCenter', [], this._drawPile.length);
+                    }
                     this._players[this._currentPlayer].conn.emit('startTurn');
                 }
             });
@@ -144,7 +148,7 @@ export default class Palace {
             p.conn.on('takeCards', () => {
                 if (this._indexOf[p.uuid] != this._currentPlayer) return;
                 if (this._discardPile.length > 0) {
-                    p.conn.emit('playSuccess', this.takeCards(p.uuid).map((c: Card) => ({ suit: c.suit, value: c.value })));
+                    p.conn.emit('takeSuccess', this.takeCards(p.uuid).map((c: Card) => ({ suit: c.suit, value: c.value })));
                 }
                 this.nextPlayer();
                 room.emit('updateInfo', this._indexOf[p.uuid], this.getPlayerInfo(thePlayer));
@@ -227,7 +231,7 @@ export default class Palace {
         const value = playerHand[cards[0]].value;
 
         // completions can be out of turn
-        if (this.completes(uuid, playerHand)) {
+        if (this.completes(playerHand.filter((_, i) => i in cards))) {
             cards.sort((a, b) => (b - a));
             cards.forEach(i => this._discardPile.add(playerHand.splice(i, 1)[0]));
             this.bombCenter();
@@ -254,7 +258,7 @@ export default class Palace {
             this._reversed = !this._reversed;
         } else if (this._cardEffects & CardEffects.TEN_BOMB && value === 10) {
             this.bombCenter();
-            return; // don't move players
+            return true; // don't move players
         }
 
         this.nextPlayer(skipCount);
@@ -330,7 +334,7 @@ export default class Palace {
      * @param cards the list of cards played
      * @returns boolean representing the given cards complete the set
      */
-    public completes(uuid: string, cards: Card[]): boolean {
+    public completes(cards: Card[]): boolean {
         const val: number = cards[0].value;
         const n: number = cards.length;
         for (let i = 1; i <= 4 - n; i++) {
@@ -355,10 +359,10 @@ export default class Palace {
 
         // if there are duplicate indices, is it invalid
         const map: boolean[] = Array(hand_length).fill(false);
-        indeces.forEach(i => {
+        for (let i of indeces) {
             if (i < 0 || i >= hand_length || map[i]) return false;
             map[i] = true;
-        });
+        }
         return true;
     }
 
@@ -371,12 +375,13 @@ export default class Palace {
     public checkIdenticalValues(uuid: string, cards: number[]) {
         const playerHand = this._players[this._indexOf[uuid]].hand;
         const value = playerHand[cards[0]].value;
-        cards.forEach(val => {
+        let flag = true;
+        for (let val of cards) {
             if (playerHand[val].value !== value) {
-                return false;
+                flag = false;
             }
-        });
-        return true;
+        }
+        return flag;
     }
 
     /**
