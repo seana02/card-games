@@ -8,6 +8,7 @@ import PalacePlayerCard from "../Components/PalacePlayerCard";
 
 interface PalaceProps {
     socket: Socket<ServerToClientEvents, ClientToServerEvents>
+    name: string
 }
 
 enum Game {
@@ -55,12 +56,16 @@ export default function Palace(props: PalaceProps) {
     const [discard, setDiscard] = useState<{suit: number, value: number}[]>([]);
     const [pileCount, setPileCount] = useState(0);
 
-    props.socket.on('initialize', (h: { suit: number, value: number }[], pC: number) => {
+    const [threeMode, setThreeMode] = useState(false);
+    const [id, setID] = useState(-1);
+
+    props.socket.on('initialize', (h: { suit: number, value: number }[], pC: number, id: number) => {
         console.log('received initialize', h);
         const hReady: { suit: number, value: number, selected: boolean }[] = [];
         h.forEach(c => hReady.push({ suit: c.suit, value: c.value, selected: false}));
         setHand(hReady);
         setPileCount(pC);
+        setID(id);
     });
 
     props.socket.on('playerList', players => {
@@ -88,9 +93,17 @@ export default function Palace(props: PalaceProps) {
         setHand(newHand);
     });
 
+    props.socket.on('takeSuccess', (cards: { suit: number, value: number }[]) => {
+        setHand([...hand, ...cards.map(c => ({ suit: c.suit, value: c.value, selected: false }))]);
+    })
+
     props.socket.on('updateCenter', (cards: { suit: number, value: number }[], count: number) => {
         setDiscard(cards);
         setPileCount(count);
+    });
+
+    props.socket.on('playThree', () => {
+        setThreeMode(true);
     });
     
     // emits the ready signal only on the first load
@@ -98,6 +111,7 @@ export default function Palace(props: PalaceProps) {
 
     return (
         <div className="game-board" id="palace-board">
+            {threeMode ? getThreeMenu() : <></>}
             <div className="top">
                 <div className="main">
                     <div className="main-deck">
@@ -141,7 +155,11 @@ export default function Palace(props: PalaceProps) {
                 break;
             }
             case Game.IN_TURN: {
-                props.socket.emit('playCards', inds);
+                if (inds.length < 0) {
+                    console.log('not enough cards');
+                } else {
+                    props.socket.emit('playCards', inds);
+                }
             }
         }
     }
@@ -197,6 +215,39 @@ export default function Palace(props: PalaceProps) {
                 {content}
             </div>
         );
+    }
+
+    function getThreeMenu() {
+        let content: React.JSX.Element[] = [];
+        playerList.forEach((p, i) => {
+            if (id == p.id) return;
+            content.push(
+                <div className="player-card" onClick={() => targetPlayer(i)}>
+                    {p.name}
+                    <div className="display-card-group">
+                        <div className="display-card">{p.inHand || 0}</div>
+                        <div style={{width: "8px"}}></div>
+                        <div className="display-card">{<Card card={p.displayed[0]} className={"small"} onClick={() => {}} />}</div>
+                        <div className="display-card">{<Card card={p.displayed[1]} className={"small"} onClick={() => {}} />}</div>
+                        <div className="display-card">{<Card card={p.displayed[2]} className={"small"} onClick={() => {}} />}</div>
+                    </div>
+                </div>
+            );
+        });
+
+        return (
+            <>
+                <div className="overlay"></div>
+                <div className="threemenu">
+                    <div className="threemenu-text">Select target player</div>
+                    {content}
+                </div>
+            </>
+        );
+    }
+
+    function targetPlayer(index: number) {
+        console.log(playerList[index].id);
     }
 
     function takeDiscard() {

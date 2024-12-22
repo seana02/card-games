@@ -104,7 +104,7 @@ export default class Palace {
                 if (!this.done) {
                     this.done = true;
                     this._players.forEach(p => {
-                        p.conn.emit('initialize', p.hand.map((c: Card) => ({ suit: c.suit, value: c.value })), this._drawPile.length);
+                        p.conn.emit('initialize', p.hand.map((c: Card) => ({ suit: c.suit, value: c.value })), this._drawPile.length, this._indexOf[p.uuid]);
                     });
                 }
             });
@@ -112,6 +112,8 @@ export default class Palace {
             p.conn.on('setup', inds => {
                 if (this.revealCards(p.uuid, inds[0], inds[1], inds[2])) {
                     p.conn.emit('setupResponse', true, thePlayer.hand.map((c: Card) => ({ suit: c.suit, value: c.value })));
+                    console.log(this._indexOf);
+                    console.log(this._players.map(p => p.name));
                     room.emit('updateInfo', this._indexOf[p.uuid], this.getPlayerInfo(thePlayer));
                     let flag = false;
                     this._players.forEach(i => {
@@ -252,6 +254,8 @@ export default class Palace {
         let skipCount = 0;
         if (this._cardEffects & CardEffects.THREE_FORCEGIVE && value === 3) {
             // 3 is played
+            this._players[this._indexOf[uuid]].conn.emit('playThree');
+            return false;
         } else if (this._cardEffects & CardEffects.EIGHT_SKIP && value === 8) {
             skipCount = cards.length;
         } else if (this._cardEffects & CardEffects.NINE_REVERSE && value === 9) {

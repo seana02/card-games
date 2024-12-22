@@ -58,6 +58,7 @@ export default function App() {
             />;
         case "palace":
             return <Palace
+                    name={name}
                     socket={socket}
                 />
         default:
