@@ -147,6 +147,18 @@ export class Deck {
     public addDeck(deck: Deck) {
         this._deck.push(...deck._deck);
     }
+
+    /**
+      * Clones this deck and returns the copy
+      *
+      * @param deck - the {@link Deck} to copy
+      */
+    public clone() {
+        let newDeck = new Deck();
+        newDeck._deck = [...this._deck];
+        return newDeck;
+    }
+
     public get cards(): Card[] {
         return this._deck;
     }
