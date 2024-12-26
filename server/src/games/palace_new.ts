@@ -139,17 +139,7 @@ function playCard(state: GameState, indices: number[]) {
     // move cards to center pile
     indices.forEach(i => newState.centerPile.add(player.hand.splice(i, 1)[0]));
 
-    // apply effect
-    if (card.value === 3) {
-        newState.threeUser = newState.currentPlayer;
-    } else if (card.value === 8) {
-        newState.currentPlayer = getNextPlayer(newState.playerList, newState.currentPlayer);
-        newState.currentPlayer = getNextPlayer(newState.playerList, newState.currentPlayer);
-    } else if (card.value === 10) {
-        newState.centerPile.clear();
-    } else {
-        newState.currentPlayer = getNextPlayer(newState.playerList, newState.currentPlayer);
-    }
+    applyEffectsHelper(newState, card.value);
 
     // draw cards
     player.hand = addToHand(player.hand, newState.drawPile.draw(Math.max(1, 3 - indices.length)));
@@ -188,15 +178,78 @@ function takeCards(state: GameState) {
     let player = newState.playerList[newState.currentPlayer];
     player.hand = addToHand(player.hand, state.centerPile.cards);
     newState.centerPile.clear();
+    newState.currentPlayer = getNextPlayer(newState.playerList, newState.currentPlayer);
     return newState;
 }
 
 function playHidden(state: GameState, index: number) {
     // invalid index selection
     if (!state.playerList[state.currentPlayer].hidden[index]) return state;
+    // stack is invalid
+    if (!checkPlayable(state.centerPile)) return state;
     
     let newState = cloneState(state);
+    let player = newState.playerList[newState.currentPlayer];
+    let cardVal = player.hidden[index].value;
+    newState.centerPile.add(player.hidden[index]);
+    player.hidden[index] = null;
 
+    // card already moved to center pile
+    if (checkCompletes(state.centerPile, cardVal, 0)) {
+        newState.centerPile.clear();
+        return newState;
+    } 
+
+    if (checkPlayable(state.centerPile)) {
+        applyEffectsHelper(newState, newState.centerPile.peek(1).value);
+    }
+
+    return newState;
+}
+
+function complete(state: GameState, playerID: number) {
+    // invalid player ID
+    if (playerID < 0 || playerID >= state.playerList.length) return state;
+    // player not in play
+    if (!playerInPlay(state.playerList[playerID])) return state;
+    // board state invalid
+    if (!checkPlayable(state.centerPile)) return state;
+    let value = state.centerPile.peek(1).value;
+    let currCount = 1;
+
+    while (value === state.centerPile.peek(currCount + 1).value) {
+        currCount++;
+    }
+
+    let player = state.playerList[playerID];
+    let indices = [];
+    for (let i = 0; i < player.hand.length && currCount + indices.length < 4; i++) {
+        if (player.hand[i].value === value) {
+            indices.push(i);
+        }
+    }
+
+    if (currCount + indices.length === 4) {
+        let newState = cloneState(state);
+        newState.currentPlayer = playerID;
+        return playCard(newState, indices);
+    }
+
+    return state;
+}
+
+function applyEffectsHelper(state: GameState, value: number) {
+    // apply effect
+    if (value === 3) {
+        state.threeUser = state.currentPlayer;
+    } else if (value === 8) {
+        state.currentPlayer = getNextPlayer(state.playerList, state.currentPlayer);
+        state.currentPlayer = getNextPlayer(state.playerList, state.currentPlayer);
+    } else if (value === 10) {
+        state.centerPile.clear();
+    } else {
+        state.currentPlayer = getNextPlayer(state.playerList, state.currentPlayer);
+    }
 }
 
 

@@ -61,17 +61,17 @@ Game State: {
     - set current player for three response
 * take cards
     - put all center pile cards into current player's hand
-- play hidden card (hand index)
+* play hidden card (hand index)
     - take card of index of current player's hidden
     - move to center pile
     - copy to last played
     - if invalid, force a take
-- completions (player id)
+* completions (player id)
     - determine how many cards are needed
     - figure out if the player has the cards
     - if they do, remove them, bomb, give them control
     - if not, do nothing
-- move to next player
+* move to next player
     - change current player to the next in-play player
 
 ### helper functions
