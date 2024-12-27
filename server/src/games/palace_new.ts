@@ -171,14 +171,31 @@ function targetPlayer(state: GameState, id: number) {
     return newState;
 }
 
+/**
+  * Current player takes the center pile cards
+  * If this is the result of a 3, then it removes the 3 from the center pile
+  * and gives control to the player that played the 3
+  *
+  * @param state - current Game State
+  */
 function takeCards(state: GameState) {
     if (!state.centerPile || state.centerPile.length < 1) return state;
 
     let newState = cloneState(state);
+
+    while (newState.centerPile.peek(1).value === 3) {
+        newState.centerPile.draw(1);
+    }
+
     let player = newState.playerList[newState.currentPlayer];
     player.hand = addToHand(player.hand, state.centerPile.cards);
     newState.centerPile.clear();
-    newState.currentPlayer = getNextPlayer(newState.playerList, newState.currentPlayer);
+    if (newState.threeUser === -1) {
+        newState.currentPlayer = getNextPlayer(newState.playerList, newState.currentPlayer);
+    } else {
+        newState.currentPlayer = newState.threeUser;
+        newState.threeUser = -1;
+    }
     return newState;
 }
 
@@ -350,6 +367,8 @@ function checkPlayable(center: Deck, card?: Card): boolean {
   * @param len - the count of cards to be played
   */
 function checkCompletes(center: Deck, value: number, len: number): boolean {
+    if (value === 3) return false;
+
     for (let i = 1; i <= 4 - len; i++) {
         if (center.peek(i).value != value) return false;
     }
