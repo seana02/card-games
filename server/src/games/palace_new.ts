@@ -12,15 +12,6 @@ type PalacePlayer = {
     revealed: Card[]
 };
 
-type GameState = {
-    drawPile: Deck,
-    centerPile: Deck,
-    lastPlayed: Card[],
-    playerList: PalacePlayer[],
-    currentPlayer: number,
-    threeUser: number,
-}
-
 const ordering: {[value: number]: number} = {
     1: 10,
     2: 11,
@@ -38,223 +29,243 @@ const ordering: {[value: number]: number} = {
     14: 10,
 }
 
-/**
-  * Initializes a Palace game with the given player information
-  * Currently only supports one deck, so having more than 5 players
-  * results in an error
-  * 
-  * @param players - list of players with name and socket information
-  */
-function initialize(players: Player[]) {
-    if (players.length > 5) throw new Error("Not enough cards!");
+class GameState {
+    drawPile: Deck;
+    centerPile: Deck;
+    lastPlayed: Card[];
+    playerList: PalacePlayer[];
+    currentPlayer: number;
+    threeUser: number;
 
-    let state: GameState = {
-        drawPile: new Deck(true),
-        centerPile: new Deck(),
-        lastPlayed: [],
-        playerList: [],
-        currentPlayer: 0,
-        threeUser: -1,
-    };
+    /**
+      * Initializes a Palace game with the given player information
+      * Currently only supports one deck, so having more than 5 players
+      * results in an error
+      * 
+      * @param players - list of players with name and socket information
+      */
+    constructor(players: Player[]) {
+        if (players.length > 5) throw new Error("Not enough cards!");
 
-    state.drawPile.shuffle();
-    players.forEach((p, i) => {
-        state.playerList.push({
-            name: p.name,
-            id: i,
-            sock: p.conn,
-            hand: addToHand([], state.drawPile.draw(6)),
-            hidden: state.drawPile.draw(3),
-            revealed: []
+        this.drawPile = new Deck(true);
+        this.centerPile = new Deck();
+        this.lastPlayed = [];
+        this.playerList = [];
+        this.currentPlayer = 0;
+        this.threeUser = -1;
+
+        this.drawPile.shuffle();
+        players.forEach((p, i) => {
+            this.playerList.push({
+                name: p.name,
+                id: i,
+                sock: p.conn,
+                hand: addToHand([], this.drawPile.draw(6)),
+                hidden: this.drawPile.draw(3),
+                revealed: []
+            });
         });
-    });
-
-    return state;
-}
-
-/**
-  * Sets the selected cards as face up cards.
-  * Does not change the state if the player has already
-  * selected cards or did not select three cards.
-  *
-  * @param state - current Game State
-  * @param id - the player id of the player to setup
-  * @param indices - the indices of the selected cards
-  */
-function setup(state: GameState, id: number, indices: number[]) {
-    // invalid ID
-    if (id < 0 || id >= state.playerList.length) return state;
-    // incorrect number of cards selected
-    if (indices.length !== 3) return state;
-    // already selected
-    if (state.playerList[id].revealed.length !== 0) return state;
-    // invalid selection
-    if (!checkValidIndices(state.playerList[id].hand, indices)) return state;
-
-    let newState = cloneState(state);
-
-    // sort high to low
-    indices.sort((a,b) => b-a);
-
-    const player = newState.playerList[id];
-    indices.forEach(i => player.revealed.push(player.hand.splice(i, 1)[0]));
-
-    return newState;
-}
-
-/**
-  * Plays the card at index of current player's hand
-  * Does not change the state if the selected card cannot be played
-  * or the index is invalid
-  *
-  * @param state - current Game State
-  * @param indeices - the indices of cards to be played
-  */
-function playCard(state: GameState, indices: number[]) {
-    // invalid indices
-    if (!checkValidIndices(state.playerList[state.currentPlayer].hand, indices)) return state;
-
-    let player = state.playerList[state.currentPlayer];
-    let card = player.hand[indices[0]];
-    for (let index of indices) {
-        // playing two different values
-        if (player.hand[indices[index]].value !== card.value) return state;
     }
 
-    // check if the value is playable
-    if (!checkPlayable(state.centerPile, card)) return state;
+    /**
+      * Sets the selected cards as face up cards.
+      * Does not change the state if the player has already
+      * selected cards or did not select three cards.
+      *
+      * @param id - the player id of the player to setup
+      * @param indices - the indices of the selected cards
+      */
+    setup(id: number, indices: number[]): GameState {
+        // invalid ID
+        if (id < 0 || id >= this.playerList.length) return this;
+        // incorrect number of cards selected
+        if (indices.length !== 3) return this;
+        // already selected
+        if (this.playerList[id].revealed.length !== 0) return this;
+        // invalid selection
+        if (!checkValidIndices(this.playerList[id].hand, indices)) return this;
 
-    indices.sort((a,b) => b - a);
+        let newState = cloneState(this);
 
-    let newState = cloneState(state);
-    player = newState.playerList[newState.currentPlayer];
+        // sort high to low
+        indices.sort((a,b) => b-a);
 
-    // if completes, do that instead
-    if (checkCompletes(state.centerPile, card.value, indices.length)) {
-        indices.forEach(i => player.hand.splice(i,1)[0]);
-        newState.centerPile.clear();
+        const player = newState.playerList[id];
+        indices.forEach(i => player.revealed.push(player.hand.splice(i, 1)[0]));
+
         return newState;
-    } 
-
-    // move cards to center pile
-    indices.forEach(i => newState.centerPile.add(player.hand.splice(i, 1)[0]));
-
-    applyEffectsHelper(newState, card.value);
-
-    // draw cards
-    player.hand = addToHand(player.hand, newState.drawPile.draw(Math.max(1, 3 - indices.length)));
-
-    // if the draw pile is empty and the hand is empty, then take displayed
-    if (player.hand.length === 0) {
-        player.hand = addToHand(player.hand, player.revealed);
-        player.revealed = [];
     }
 
-    return newState;
-}
+    /**
+      * Plays the card at index of current player's hand
+      * Does not change the state if the selected card cannot be played
+      * or the index is invalid
+      *
+      * @param indeices - the indices of cards to be played
+      */
+    playCard(indices: number[]): GameState {
+        // invalid indices
+        if (!checkValidIndices(this.playerList[this.currentPlayer].hand, indices)) return this;
 
-/**
-  * Identifies the player that is the target of a 3 card
-  * Fails if the id is invalid or not in play
-  *
-  * @param state - current Game State
-  * @param id - the player id of the target
-  */
-function targetPlayer(state: GameState, id: number) {
-    // id is not a valid id
-    if (id < 0 || id >= state.playerList.length) return state;
-    // selected player is not in play
-    if (!playerInPlay(state.playerList[id])) return state;
-
-    let newState = cloneState(state);
-    newState.currentPlayer = id;
-    return newState;
-}
-
-/**
-  * Current player takes the center pile cards
-  * If this is the result of a 3, then it removes the 3 from the center pile
-  * and gives control to the player that played the 3
-  *
-  * @param state - current Game State
-  */
-function takeCards(state: GameState) {
-    if (!state.centerPile || state.centerPile.length < 1) return state;
-
-    let newState = cloneState(state);
-
-    while (newState.centerPile.peek(1).value === 3) {
-        newState.centerPile.draw(1);
-    }
-
-    let player = newState.playerList[newState.currentPlayer];
-    player.hand = addToHand(player.hand, state.centerPile.cards);
-    newState.centerPile.clear();
-    if (newState.threeUser === -1) {
-        newState.currentPlayer = getNextPlayer(newState.playerList, newState.currentPlayer);
-    } else {
-        newState.currentPlayer = newState.threeUser;
-        newState.threeUser = -1;
-    }
-    return newState;
-}
-
-function playHidden(state: GameState, index: number) {
-    // invalid index selection
-    if (!state.playerList[state.currentPlayer].hidden[index]) return state;
-    // stack is invalid
-    if (!checkPlayable(state.centerPile)) return state;
-    
-    let newState = cloneState(state);
-    let player = newState.playerList[newState.currentPlayer];
-    let cardVal = player.hidden[index].value;
-    newState.centerPile.add(player.hidden[index]);
-    player.hidden[index] = null;
-
-    // card already moved to center pile
-    if (checkCompletes(state.centerPile, cardVal, 0)) {
-        newState.centerPile.clear();
-        return newState;
-    } 
-
-    if (checkPlayable(state.centerPile)) {
-        applyEffectsHelper(newState, newState.centerPile.peek(1).value);
-    }
-
-    return newState;
-}
-
-function complete(state: GameState, playerID: number) {
-    // invalid player ID
-    if (playerID < 0 || playerID >= state.playerList.length) return state;
-    // player not in play
-    if (!playerInPlay(state.playerList[playerID])) return state;
-    // board state invalid
-    if (!checkPlayable(state.centerPile)) return state;
-    let value = state.centerPile.peek(1).value;
-    let currCount = 1;
-
-    while (value === state.centerPile.peek(currCount + 1).value) {
-        currCount++;
-    }
-
-    let player = state.playerList[playerID];
-    let indices = [];
-    for (let i = 0; i < player.hand.length && currCount + indices.length < 4; i++) {
-        if (player.hand[i].value === value) {
-            indices.push(i);
+        let player = this.playerList[this.currentPlayer];
+        let card = player.hand[indices[0]];
+        for (let index of indices) {
+            // playing two different values
+            if (player.hand[indices[index]].value !== card.value) return this;
         }
+
+        // check if the value is playable
+        if (!checkPlayable(this.centerPile, card)) return this;
+
+        indices.sort((a,b) => b - a);
+
+        let newState = cloneState(this);
+        player = newState.playerList[newState.currentPlayer];
+
+        // if completes, do that instead
+        if (checkCompletes(this.centerPile, card.value, indices.length)) {
+            indices.forEach(i => player.hand.splice(i,1)[0]);
+            newState.centerPile.clear();
+            return newState;
+        } 
+
+        // move cards to center pile
+        indices.forEach(i => newState.centerPile.add(player.hand.splice(i, 1)[0]));
+
+        applyEffectsHelper(newState, card.value);
+
+        // draw cards
+        player.hand = addToHand(player.hand, newState.drawPile.draw(Math.max(1, 3 - indices.length)));
+
+        // if the draw pile is empty and the hand is empty, then take displayed
+        if (player.hand.length === 0) {
+            player.hand = addToHand(player.hand, player.revealed);
+            player.revealed = [];
+        }
+
+        return newState;
     }
 
-    if (currCount + indices.length === 4) {
-        let newState = cloneState(state);
-        newState.currentPlayer = playerID;
-        return playCard(newState, indices);
+    /**
+      * Identifies the player that is the target of a 3 card
+      * Fails if the id is invalid or not in play
+      *
+      * @param id - the player id of the target
+      */
+    targetPlayer(id: number): GameState {
+        // id is not a valid id
+        if (id < 0 || id >= this.playerList.length) return this;
+        // selected player is not in play
+        if (!playerInPlay(this.playerList[id])) return this;
+
+        let newState = cloneState(this);
+        newState.currentPlayer = id;
+        return newState;
     }
 
-    return state;
+    /**
+      * Current player takes the center pile cards
+      * If this is the result of a 3, then it removes the 3 from the center pile
+      * and gives control to the player that played the 3
+      */
+    takeCards(): GameState {
+        if (!this.centerPile || this.centerPile.length < 1) return this;
+
+        let newState = cloneState(this);
+
+        while (newState.centerPile.peek(1).value === 3) {
+            newState.centerPile.draw(1);
+        }
+
+        let player = newState.playerList[newState.currentPlayer];
+        player.hand = addToHand(player.hand, this.centerPile.cards);
+        newState.centerPile.clear();
+        if (newState.threeUser === -1) {
+            newState.currentPlayer = getNextPlayer(newState.playerList, newState.currentPlayer);
+        } else {
+            newState.currentPlayer = newState.threeUser;
+            newState.threeUser = -1;
+        }
+        return newState;
+    }
+
+    /**
+      * Plays a face down card. Does not change state if the index is invalid
+      * or it expects a take
+      *
+      * @param index - the index of the hidden card to play
+      */
+    playHidden(index: number): GameState {
+        // invalid index selection
+        if (!this.playerList[this.currentPlayer].hidden[index]) return this;
+        // stack is invalid
+        if (!checkPlayable(this.centerPile)) return this;
+        
+        let newState = cloneState(this);
+        let player = newState.playerList[newState.currentPlayer];
+        let cardVal = player.hidden[index].value;
+        newState.centerPile.add(player.hidden[index]);
+        player.hidden[index] = null;
+
+        // card already moved to center pile
+        if (checkCompletes(this.centerPile, cardVal, 0)) {
+            newState.centerPile.clear();
+            return newState;
+        } 
+
+        if (checkPlayable(this.centerPile)) {
+            applyEffectsHelper(newState, newState.centerPile.peek(1).value);
+        }
+
+        return newState;
+    }
+
+    /**
+      * Completes the center pile. Can be played by anyone, so requires
+      * the playerID. Fails if the player id is invalid, the player is not
+      * in play, or completion is not legal/possible.
+      *
+      * @param playerID - the player ID of the player attempting to complete
+      */
+    complete(playerID: number): GameState {
+        // invalid player ID
+        if (playerID < 0 || playerID >= this.playerList.length) return this;
+        // player not in play
+        if (!playerInPlay(this.playerList[playerID])) return this;
+        // board state invalid
+        if (!checkPlayable(this.centerPile)) return this;
+        let value = this.centerPile.peek(1).value;
+        let currCount = 1;
+
+        while (value === this.centerPile.peek(currCount + 1).value) {
+            currCount++;
+        }
+
+        let player = this.playerList[playerID];
+        let indices = [];
+        for (let i = 0; i < player.hand.length && currCount + indices.length < 4; i++) {
+            if (player.hand[i].value === value) {
+                indices.push(i);
+            }
+        }
+
+        if (currCount + indices.length === 4) {
+            let newState = cloneState(this);
+            newState.currentPlayer = playerID;
+            return this.playCard(indices);
+        }
+
+        return this;
+    }
 }
 
+/**
+  * Helper function to apply card effects to passed in state.
+  * Typically used when constructing new state to return.
+  *
+  * @param state - the state to apply the effect to
+  * @param value - the card value played
+  */
 function applyEffectsHelper(state: GameState, value: number) {
     // apply effect
     if (value === 3) {
