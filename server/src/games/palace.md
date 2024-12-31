@@ -88,17 +88,23 @@ Game State: {
     - find the socket id of the current player, compare to input
 
 ### client to server messages
+- reveal cards
 - play card (index: number)
     - check if sender is current player
-- target player (player id: number)
 - take cards
 - complete
+- target player (player id: number)
+    - process is play 3 -> server's playCard -> choose three target -> target player
+    - target can either take or play 3
 
 ### server to client messages
 - update public information (public information object)
+    - revealed cards
+    - hand count
 - update data (data object) 
-- revealed (player id: number)
-- choose three target
 - your turn
+- someone completed
+    - required to shut down current player's turn
+- choose three target
 
 
