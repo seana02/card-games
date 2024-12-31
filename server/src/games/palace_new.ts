@@ -2,24 +2,8 @@ import { Socket } from "socket.io"
 import { Card, Deck, Suit } from "types/Deck"
 import { Player } from "types/Player"
 import { ClientToServerEvents, InterServerEvents, ServerToClientEvents, SocketData } from "types/Socket"
+import { PalacePlayer, GameState } from "types/Palace"
 
-type PalacePlayer = {
-    name: string,
-    id: number,
-    sock: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>,
-    hand: Card[],
-    hidden: Card[],
-    revealed: Card[]
-};
-
-type GameState = {
-    drawPile: Deck,
-    centerPile: Deck,
-    lastPlayed: Card[],
-    playerList: PalacePlayer[],
-    currentPlayer: number,
-    threeUser: number,
-}
 
 const ordering: {[value: number]: number} = {
     1: 10,
@@ -45,7 +29,7 @@ const ordering: {[value: number]: number} = {
   * 
   * @param players - list of players with name and socket information
   */
-function initialize(players: Player[]) {
+export function initialize(players: Player[]) {
     if (players.length > 5) throw new Error("Not enough cards!");
 
     let state: GameState = {
@@ -81,7 +65,7 @@ function initialize(players: Player[]) {
   * @param id - the player id of the player to setup
   * @param indices - the indices of the selected cards
   */
-function setup(state: GameState, id: number, indices: number[]) {
+export function setup(state: GameState, id: number, indices: number[]) {
     // invalid ID
     if (id < 0 || id >= state.playerList.length) return state;
     // incorrect number of cards selected
@@ -110,7 +94,7 @@ function setup(state: GameState, id: number, indices: number[]) {
   * @param state - current Game State
   * @param indeices - the indices of cards to be played
   */
-function playCard(state: GameState, indices: number[]) {
+export function playCard(state: GameState, indices: number[]) {
     // invalid indices
     if (!checkValidIndices(state.playerList[state.currentPlayer].hand, indices)) return state;
 
@@ -160,7 +144,7 @@ function playCard(state: GameState, indices: number[]) {
   * @param state - current Game State
   * @param id - the player id of the target
   */
-function targetPlayer(state: GameState, id: number) {
+export function targetPlayer(state: GameState, id: number) {
     // id is not a valid id
     if (id < 0 || id >= state.playerList.length) return state;
     // selected player is not in play
@@ -171,7 +155,7 @@ function targetPlayer(state: GameState, id: number) {
     return newState;
 }
 
-function takeCards(state: GameState) {
+export function takeCards(state: GameState) {
     if (!state.centerPile || state.centerPile.length < 1) return state;
 
     let newState = cloneState(state);
@@ -182,7 +166,7 @@ function takeCards(state: GameState) {
     return newState;
 }
 
-function playHidden(state: GameState, index: number) {
+export function playHidden(state: GameState, index: number) {
     // invalid index selection
     if (!state.playerList[state.currentPlayer].hidden[index]) return state;
     // stack is invalid
@@ -207,7 +191,7 @@ function playHidden(state: GameState, index: number) {
     return newState;
 }
 
-function complete(state: GameState, playerID: number) {
+export function complete(state: GameState, playerID: number) {
     // invalid player ID
     if (playerID < 0 || playerID >= state.playerList.length) return state;
     // player not in play
@@ -238,7 +222,7 @@ function complete(state: GameState, playerID: number) {
     return state;
 }
 
-function applyEffectsHelper(state: GameState, value: number) {
+export function applyEffectsHelper(state: GameState, value: number) {
     // apply effect
     if (value === 3) {
         state.threeUser = state.currentPlayer;
