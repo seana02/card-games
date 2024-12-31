@@ -29,7 +29,7 @@ const ordering: {[value: number]: number} = {
     14: 10,
 }
 
-class GameState {
+export class GameState {
     drawPile: Deck;
     centerPile: Deck;
     lastPlayed: Card[];
@@ -103,7 +103,7 @@ class GameState {
       *
       * @param indeices - the indices of cards to be played
       */
-    playCard(indices: number[]): GameState {
+    playCards(indices: number[]): GameState {
         // invalid indices
         if (!checkValidIndices(this.playerList[this.currentPlayer].hand, indices)) return this;
 
@@ -252,7 +252,7 @@ class GameState {
         if (currCount + indices.length === 4) {
             let newState = cloneState(this);
             newState.currentPlayer = playerID;
-            return this.playCard(indices);
+            return this.playCards(indices);
         }
 
         return this;
@@ -415,13 +415,19 @@ function playerInPlay(player: PalacePlayer): boolean {
   * @param state - the state object to deep clone
   */
 function cloneState(state: GameState): GameState {
-    let newState: GameState =  {
+    let newState: GameState = {
         drawPile: state.drawPile.clone(),
         centerPile: state.centerPile.clone(),
         playerList: [],
         lastPlayed: [...state.lastPlayed],
         currentPlayer: state.currentPlayer,
         threeUser: state.threeUser,
+        setup: state.setup,
+        playCards: state.playCards,
+        targetPlayer: state.targetPlayer,
+        takeCards: state.takeCards,
+        playHidden: state.playHidden,
+        complete: state.complete
     };
 
     state.playerList.forEach(p => {

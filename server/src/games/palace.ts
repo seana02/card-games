@@ -3,8 +3,7 @@ import { Card, Deck, Suit } from "../types/Deck";
 import { BroadcastOperator } from "socket.io";
 import { ServerToClientEvents, SocketData } from "types/Socket";
 import { DecorateAcknowledgementsWithMultipleResponses } from "socket.io/dist/typed-events";
-import { GameState } from "types/Palace";
-import { initialize, playCard } from "./palace_new";
+import { GameState } from "./palace_new";
 import { PalacePlayer } from "types/Palace";
 
 type Room = BroadcastOperator<DecorateAcknowledgementsWithMultipleResponses<ServerToClientEvents>, SocketData>;
@@ -55,7 +54,7 @@ export default class Palace {
         this._room = room;
         this._roomID = roomID;
         if (players.length < 1) throw Error("Requires at least 2 players");
-        this._globalState = initialize(players);
+        this._globalState = new GameState(players);
  
 
         room.emit('gameStart', "palace");
