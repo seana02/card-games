@@ -1,6 +1,6 @@
 import { Socket } from "socket.io"
-import { Card, Deck, Suit } from "types/Deck"
-import { Player } from "types/Player"
+import { Card, Deck, Suit } from "../types/Deck"
+import { Player } from "../types/Player"
 import { ClientToServerEvents, InterServerEvents, ServerToClientEvents, SocketData } from "types/Socket"
 
 type PalacePlayer = {

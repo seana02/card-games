@@ -91,20 +91,7 @@ export default class Palace {
             });
 
             p.sock.on('playCards', inds => {
-                if (this.playCards(p.id, inds)) {
-                    if (this._globalState.drawPile.length > 0 && thePlayer.hand.length < 3) {
-                        p.sock.emit('playSuccess', this.drawCard(p.id, 3 - thePlayer.hand.length).map((c: Card) => ({ suit: c.suit, value: c.value })));
-                    } else {
-                        p.sock.emit('playSuccess', []);
-                    }
-                    room.emit('updateInfo', p.id, this.getPlayerInfo(thePlayer));
-                    if (this._globalState.centerPile.length > 0) {
-                        room.emit('updateCenter', inds.map((_, i) => ({ suit: this._globalState.centerPile.peek(i+1).suit, value: this._globalState.centerPile.peek(i+1).value })), this._globalState.drawPile.length);
-                    } else {
-                        room.emit('updateCenter', [], this._globalState.drawPile.length);
-                    }
-                    this._globalState.playerList[this._globalState.currentPlayer].sock.emit('startTurn');
-                }
+                this.playCards(p.id, inds);
             });
 
             p.sock.on('takeCards', () => {
@@ -144,6 +131,9 @@ export default class Palace {
      * or if the player has already chosen cards.
      */
     public revealCards(uuid: number, i1: number, i2: number, i3: number): boolean {
+        return (this._globalState.playerList[uuid].revealed.length - 
+            (this._globalState = this._globalState.setup(uuid, [i1, i2, i3])).playerList[uuid].revealed.length) != 0;
+        /*
         // ensure that 0 <= i1 < i2 < i3 < 6
         if (!this.checkValidIndices(uuid, [i1, i2, i3])) return false;
         const inds = [i1, i2, i3].sort((a, b) => b - a);
@@ -155,6 +145,7 @@ export default class Palace {
         // highest index first to avoid position shifting
         inds.forEach(i => player.revealed.push(player.hand.splice(i, 1)[0]));
         return true;
+        */
     }
 
 
@@ -175,35 +166,20 @@ export default class Palace {
      * @returns if successful, true
      */
     public playCards(uuid: number, cards: number[]): boolean {
-        let newGameState = playCard(this._globalState, cards);
-
-
-
-        return true;
-    }
-
-    public playThree(uuid: number, target: string, cards: number[]): boolean {
-        if (!this.checkValidIndices(uuid, cards)) return false;
-        if (!this.checkIdenticalValues(uuid, cards)) return false;
-        if (this._threeTarget && this._threeTarget != target) return false;
-
-        const playerHand = this._globalState.playerList[this._globalState.currentPlayer].hand;
-        const value = playerHand[cards[0]].value;
-        if (value !== 3) return this.playCards(uuid, cards);
-
-        if (!this._indexOf[target]) return false;
-
-        this._threePlayed = uuid;
-        this._threeTarget = target;
-        this._globalState.currentPlayer = this._indexOf[target];
-        return true;
-    }
-
-    public loseThreeChallenge(uuid: number): boolean {
-        this.takeCards(uuid);
-        this._globalState.currentPlayer = this._indexOf[this._threePlayed];
-        this._threePlayed = null;
-        this._threeTarget = null;
+        if (uuid != this._globalState.currentPlayer) return false;
+        let newState = this._globalState.playCards(cards);
+        let arr = [];
+        for (let i of newState.playerList[uuid].hand) {
+            if (!this._globalState.playerList[uuid].hand.includes(i)) {
+                arr.push(i);
+            }
+        }
+        this._globalState.playerList[uuid].sock.emit("playSuccess", arr.map((c: Card) => ({ suit: c.suit, value: c.value })))
+        this._room.emit('updateInfo', uuid, this.getPlayerInfo(newState.playerList[uuid]));
+    
+        this._room.emit('updateCenter', newState.lastPlayed.map((c: Card) => ({ suit: c.suit, value: c.value })), newState.drawPile.length);
+    
+        (this._globalState = newState).playerList[newState.currentPlayer].sock.emit('startTurn')
         return true;
     }
 
@@ -218,7 +194,7 @@ export default class Palace {
         if (!top) return true;
 
         // Note: Ace is 14
-        const reverse_flag: boolean = (this._cardEffects & CardEffects.SEVEN_BELOW) && (top === 7);
+        const reverse_flag: boolean = top === 7;
         switch (value) {
             case 2:
             case 3:
@@ -309,10 +285,13 @@ export default class Palace {
             return [];
         }
         const cards = [...this._globalState.centerPile.cards];
+        this._globalState = this._globalState.takeCards();
         if (!cards || cards.length < 1) return [];
+        /*
         this._globalState.playerList[uuid].hand.push(...cards);
         this.sortHand(uuid);
         this._globalState.centerPile.clear();
+        */
         return cards;
     }
 
