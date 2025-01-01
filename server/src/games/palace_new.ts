@@ -332,10 +332,12 @@ function checkValidIndices(array: any[], indices: number[]): boolean {
   * @param card - (optional) if given, checks if playable on top of center pile
   */
 function checkPlayable(center: Deck, card?: Card): boolean {
+    if (!center.peek(1)) return true;
+
     let top = center.peek(1).value;
-    let prev = center.peek(2).value;
+    let prev = center.peek(2)?.value;
     let ind = 3;
-    while (prev !== top) {
+    while (prev === top) {
         prev = center.peek(ind).value;
         ind++;
     }
@@ -346,6 +348,7 @@ function checkPlayable(center: Deck, card?: Card): boolean {
     return check(card.value, top);
 
     function check(toPlay: number, prev: number) {
+        if (!prev) return true;
         switch (top) {
             case 2:
             case 3:
@@ -381,7 +384,7 @@ function checkCompletes(center: Deck, value: number, len: number): boolean {
     if (value === 3) return false;
 
     for (let i = 1; i <= 4 - len; i++) {
-        if (center.peek(i).value != value) return false;
+        if (center.peek(i)?.value != value) return false;
     }
     return true;
 }

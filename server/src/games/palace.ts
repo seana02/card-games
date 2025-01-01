@@ -61,9 +61,7 @@ export default class Palace {
 
         room.emit('playerList', this._globalState.playerList.map((p, i) => ({ name: p.name, id: i, displayed: [{ back: 1 }, { back: 1 }, { back: 1 }], inHand: 6 })));
 
-        this._globalState.playerList.forEach(p => {
-            let thePlayer = p;
-
+        this._globalState.playerList.forEach((p, i) => {
             p.sock.on('ready', () => {
                 if (!this.done) {
                     this.done = true;
@@ -75,8 +73,8 @@ export default class Palace {
 
             p.sock.on('setup', inds => {
                 if (this.revealCards(p.id, inds[0], inds[1], inds[2])) {
-                    p.sock.emit('setupResponse', true, thePlayer.hand.map((c: Card) => ({ suit: c.suit, value: c.value })));
-                    room.emit('updateInfo', p.id, this.getPlayerInfo(thePlayer));
+                    p.sock.emit('setupResponse', true, this._globalState.playerList[i].hand.map((c: Card) => ({ suit: c.suit, value: c.value })));
+                    room.emit('updateInfo', p.id, this.getPlayerInfo(this._globalState.playerList[i]));
                     let flag = false;
                     this._globalState.playerList.forEach(i => {
                         if (i.revealed.length != 3) flag = true;
@@ -86,7 +84,7 @@ export default class Palace {
                         this._globalState.playerList[this._globalState.currentPlayer].sock.emit('startTurn');
                     }
                 } else {
-                    p.sock.emit('setupResponse', false, thePlayer.hand);
+                    p.sock.emit('setupResponse', false, this._globalState.playerList[i].hand);
                 }
             });
 
@@ -99,7 +97,7 @@ export default class Palace {
                 if (this._globalState.centerPile.length > 0) {
                     p.sock.emit('takeSuccess', this.takeCards(p.id).map((c: Card) => ({ suit: c.suit, value: c.value })));
                 }
-                room.emit('updateInfo', p.id, this.getPlayerInfo(thePlayer));
+                room.emit('updateInfo', p.id, this.getPlayerInfo(this._globalState.playerList[i]));
                 room.emit('updateCenter', [], this._globalState.drawPile.length);
                 this._globalState.playerList[this._globalState.currentPlayer].sock.emit('startTurn');
             });
@@ -131,8 +129,10 @@ export default class Palace {
      * or if the player has already chosen cards.
      */
     public revealCards(uuid: number, i1: number, i2: number, i3: number): boolean {
-        return (this._globalState.playerList[uuid].revealed.length - 
-            (this._globalState = this._globalState.setup(uuid, [i1, i2, i3])).playerList[uuid].revealed.length) != 0;
+        if (this._globalState.playerList[uuid].revealed.length === 3) return false;
+        this._globalState = this._globalState.setup(uuid, [i1, i2, i3]);
+        return this._globalState.playerList[uuid].revealed.length === 3;
+
         /*
         // ensure that 0 <= i1 < i2 < i3 < 6
         if (!this.checkValidIndices(uuid, [i1, i2, i3])) return false;
