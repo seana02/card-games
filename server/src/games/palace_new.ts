@@ -143,30 +143,27 @@ export class GameState {
         if (checkCompletes(this.centerPile, card.value, indices.length)) {
             indices.forEach(i => player.hand.splice(i,1)[0]);
             newState.centerPile.clear();
-            return newState;
-        } 
+            newState.lastPlayed = [];
+        } else {
+            // move cards to center pile
+            newState.lastPlayed = [];
+            indices.forEach(i => {
+                let card = player.hand.splice(i, 1)[0];
+                newState.lastPlayed.push(card);
+                newState.centerPile.add(card);
+            });
 
-        // move cards to center pile
-        newState.lastPlayed = [];
-        indices.forEach(i => {
-            let card = player.hand.splice(i, 1)[0];
-            newState.lastPlayed.push(card);
-            newState.centerPile.add(card);
-        });
-
-        applyEffectsHelper(newState, card.value);
-        console.log("applied effects");
+            applyEffectsHelper(newState, card.value, newState.lastPlayed.length);
+        }
 
         // draw cards
         player.hand = addToHand(player.hand, newState.drawPile.draw(Math.max(1, 3 - player.hand.length)));
-        console.log("drew");
 
         // if the draw pile is empty and the hand is empty, then take displayed
         if (player.hand.length === 0) {
             player.hand = addToHand(player.hand, player.revealed);
             player.revealed = [];
         }
-        console.log("newState:", newState);
 
         return newState;
     }
@@ -239,7 +236,7 @@ export class GameState {
         } 
 
         if (checkPlayable(this.centerPile)) {
-            applyEffectsHelper(newState, newState.centerPile.peek(1).value);
+            applyEffectsHelper(newState, newState.centerPile.peek(1).value, 1);
         }
 
         return newState;
@@ -291,13 +288,17 @@ export class GameState {
   * @param state - the state to apply the effect to
   * @param value - the card value played
   */
-function applyEffectsHelper(state: GameState, value: number) {
+function applyEffectsHelper(state: GameState, value: number, count: number) {
     console.log("applying effects");
     // apply effect
     if (value === 3) {
         state.threeUser = state.currentPlayer;
     } else if (value === 8) {
-        state.currentPlayer = getNextPlayer(state.playerList, state.currentPlayer);
+        for (let i = 0; i < count; i++) {
+            let next = getNextPlayer(state.playerList, state.currentPlayer);
+            if (next == state.currentPlayer) i--;
+            state.currentPlayer = next;
+        }
         state.currentPlayer = getNextPlayer(state.playerList, state.currentPlayer);
     } else if (value === 10) {
         state.centerPile.clear();

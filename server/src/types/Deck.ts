@@ -42,6 +42,7 @@ export class Card {
       * @returns whether the cards are the same
       */
     public equals(other: Card): boolean {
+        if (!other) return false;
         return (
             this._suit === other.suit &&
             this._value === other.value
