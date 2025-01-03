@@ -37,6 +37,22 @@ export class GameState {
     currentPlayer: number;
     threeUser: number;
 
+    equals(other: GameState) {
+        for (let i = 0; i < this.playerList.length; i++) {
+            if (this.playerList[i].hand.length !== other.playerList[i].hand.length)
+                return false;
+        }
+        if (this.lastPlayed[0]) {
+            if (!this.lastPlayed[0].equals(other.lastPlayed[0])) return false;
+        }
+        return (
+            this.drawPile.length === other.drawPile.length
+            && this.centerPile.length === other.centerPile.length
+            && this.currentPlayer === other.currentPlayer
+            && this.threeUser === other.threeUser
+        );       
+    }
+
     /**
       * Initializes a Palace game with the given player information
       * Currently only supports one deck, so having more than 5 players
@@ -109,9 +125,10 @@ export class GameState {
 
         let player = this.playerList[this.currentPlayer];
         let card = player.hand[indices[0]];
+        console.log("checking indices", indices, "with playerHand", player.hand);
         for (let index of indices) {
             // playing two different values
-            if (player.hand[indices[index]].value !== card.value) return this;
+            if (player.hand[index].value !== card.value) return this;
         }
 
         // check if the value is playable
@@ -130,18 +147,26 @@ export class GameState {
         } 
 
         // move cards to center pile
-        indices.forEach(i => newState.centerPile.add(player.hand.splice(i, 1)[0]));
+        newState.lastPlayed = [];
+        indices.forEach(i => {
+            let card = player.hand.splice(i, 1)[0];
+            newState.lastPlayed.push(card);
+            newState.centerPile.add(card);
+        });
 
         applyEffectsHelper(newState, card.value);
+        console.log("applied effects");
 
         // draw cards
-        player.hand = addToHand(player.hand, newState.drawPile.draw(Math.max(1, 3 - indices.length)));
+        player.hand = addToHand(player.hand, newState.drawPile.draw(Math.max(1, 3 - player.hand.length)));
+        console.log("drew");
 
         // if the draw pile is empty and the hand is empty, then take displayed
         if (player.hand.length === 0) {
             player.hand = addToHand(player.hand, player.revealed);
             player.revealed = [];
         }
+        console.log("newState:", newState);
 
         return newState;
     }
@@ -267,6 +292,7 @@ export class GameState {
   * @param value - the card value played
   */
 function applyEffectsHelper(state: GameState, value: number) {
+    console.log("applying effects");
     // apply effect
     if (value === 3) {
         state.threeUser = state.currentPlayer;
@@ -275,6 +301,7 @@ function applyEffectsHelper(state: GameState, value: number) {
         state.currentPlayer = getNextPlayer(state.playerList, state.currentPlayer);
     } else if (value === 10) {
         state.centerPile.clear();
+        state.lastPlayed = [];
     } else {
         state.currentPlayer = getNextPlayer(state.playerList, state.currentPlayer);
     }
@@ -316,6 +343,7 @@ function addToHand(currHand: Card[], toAdd: Card[]): Card[] {
   * @param indices - the list of indices to check
   */
 function checkValidIndices(array: any[], indices: number[]): boolean {
+    if (indices.length <= 0) return false;
     const map: boolean[] = Array(array.length).fill(false);
     for (let index of indices) {
         if (index < 0 || index >= array.length || map[index]) return false;
@@ -338,7 +366,7 @@ function checkPlayable(center: Deck, card?: Card): boolean {
     let prev = center.peek(2)?.value;
     let ind = 3;
     while (prev === top) {
-        prev = center.peek(ind).value;
+        prev = center.peek(ind)?.value;
         ind++;
     }
     if (!check(top, prev)) return false;
@@ -348,8 +376,9 @@ function checkPlayable(center: Deck, card?: Card): boolean {
     return check(card.value, top);
 
     function check(toPlay: number, prev: number) {
+        console.log("checking if", toPlay, "is playable on", prev);
         if (!prev) return true;
-        switch (top) {
+        switch (toPlay) {
             case 2:
             case 3:
             case 10: break;
@@ -397,7 +426,7 @@ function checkCompletes(center: Deck, value: number, len: number): boolean {
   */
 function getNextPlayer(playerList: PalacePlayer[], currentPlayer: number): number {
     currentPlayer = (currentPlayer + 1) % playerList.length;
-    while (playerInPlay(playerList[currentPlayer])) {
+    while (!playerInPlay(playerList[currentPlayer])) {
         currentPlayer = (currentPlayer + 1) % playerList.length;
     }
     return currentPlayer;
@@ -426,6 +455,7 @@ function cloneState(state: GameState): GameState {
         currentPlayer: state.currentPlayer,
         threeUser: state.threeUser,
         setup: state.setup,
+        equals: state.equals,
         playCards: state.playCards,
         targetPlayer: state.targetPlayer,
         takeCards: state.takeCards,
