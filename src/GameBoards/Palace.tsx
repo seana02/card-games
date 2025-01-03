@@ -90,11 +90,13 @@ export default function Palace(props: PalaceProps) {
     props.socket.on('playSuccess', (cards: { suit: number, value: number }[]) => {
         const newHand = hand.filter(c => !c.selected);
         cards.forEach(c => newHand.push({ suit: c.suit, value: c.value, selected: false }));
+        setState(Game.OUT_TURN);
         setHand(newHand);
     });
 
     props.socket.on('takeSuccess', (cards: { suit: number, value: number }[]) => {
         setHand([...hand, ...cards.map(c => ({ suit: c.suit, value: c.value, selected: false }))]);
+        setState(Game.OUT_TURN);
     })
 
     props.socket.on('updateCenter', (cards: { suit: number, value: number }[], count: number) => {

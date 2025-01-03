@@ -168,6 +168,7 @@ export default class Palace {
     public playCards(uuid: number, cards: number[]): boolean {
         if (uuid != this._globalState.currentPlayer) return false;
         let newState = this._globalState.playCards(cards);
+        if (this._globalState.equals(newState)) return false;
         let arr = [];
         for (let i of newState.playerList[uuid].hand) {
             if (!this._globalState.playerList[uuid].hand.includes(i)) {
