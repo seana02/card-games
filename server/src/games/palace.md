@@ -15,6 +15,7 @@ static data: {
 }
 
 data: {
+    id: number,
     cards: { suit, value }[]
     shared: {
         center: { suit, value }[],
@@ -88,7 +89,9 @@ Game State: {
     - find the socket id of the current player, compare to input
 
 ### client to server messages
-- reveal cards
+- ready
+    - sent on first load
+- reveal cards (setup)
 - play card (index: number)
     - check if sender is current player
 - take cards
