@@ -74,7 +74,7 @@ io.on('connection', socket => {
         }
 
         // TODO: card effects parameter
-        games[room] = new Palace(io.to(`${room}`), `${room}`, waiting[room]);
+        games[room] = new Palace(io.to(`${room}`), waiting[room]);
         delete waiting[room];
     });
 });

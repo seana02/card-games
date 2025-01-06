@@ -1,11 +1,5 @@
-import { GameState } from "types/Palace"
-import { Card, Deck, Suit} from "types/Deck"
-type Shared = {
-    center: Card[],
-    draw_count: number,
-    displayed: {[id: number]: Card[]},
-    count: {[id: number]: number}
-}
+import { GameState, PalaceData, Shared } from "types/Palace"
+
 function serverToClient(game: GameState) {
     let shared: Shared = {
         center: game.centerPile.cards,
@@ -19,7 +13,8 @@ function serverToClient(game: GameState) {
     }
     for (let i = 0; i < game.playerList.length; i++) {
         console.log("Player " + i + ":");
-        let player_data = {
+        let player_data: PalaceData = {
+            id: i,
             cards: game.playerList[i].hand,
             shared
         }

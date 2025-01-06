@@ -125,7 +125,7 @@ export class GameState {
 
         let player = this.playerList[this.currentPlayer];
         let card = player.hand[indices[0]];
-        console.log("checking indices", indices, "with playerHand", player.hand);
+
         for (let index of indices) {
             // playing two different values
             if (player.hand[index].value !== card.value) return this;
@@ -200,8 +200,9 @@ export class GameState {
         }
 
         let player = newState.playerList[newState.currentPlayer];
-        player.hand = addToHand(player.hand, this.centerPile.cards);
+        player.hand = addToHand(player.hand, newState.centerPile.cards);
         newState.centerPile.clear();
+        newState.lastPlayed = [];
         if (newState.threeUser === -1) {
             newState.currentPlayer = getNextPlayer(newState.playerList, newState.currentPlayer);
         } else {
@@ -292,11 +293,16 @@ function applyEffectsHelper(state: GameState, value: number, count: number) {
     console.log("applying effects");
     // apply effect
     if (value === 3) {
-        state.threeUser = state.currentPlayer;
+        let tmp = state.currentPlayer;
+        if (state.threeUser !== -1) {
+            state.currentPlayer = state.threeUser;
+        }
+        state.threeUser = tmp;
     } else if (value === 8) {
+        let eightPlayer = state.currentPlayer
         for (let i = 0; i < count; i++) {
             let next = getNextPlayer(state.playerList, state.currentPlayer);
-            if (next == state.currentPlayer) i--;
+            if (next == eightPlayer) i--;
             state.currentPlayer = next;
         }
         state.currentPlayer = getNextPlayer(state.playerList, state.currentPlayer);
@@ -380,13 +386,16 @@ function checkPlayable(center: Deck, card?: Card): boolean {
         console.log("checking if", toPlay, "is playable on", prev);
         if (!prev) return true;
         switch (toPlay) {
+            case 3: break;
             case 2:
-            case 3:
-            case 10: break;
+            case 10:
+                if (prev === 3) return false;
+                break;
             case 4:
             case 5:
             case 6:
             case 7:
+                if (prev === 3) return false;
                 if (toPlay < prev && prev !== 7) return false;
                 break;
             case 8:
@@ -395,9 +404,10 @@ function checkPlayable(center: Deck, card?: Card): boolean {
             case 12:
             case 13:
             case 14:
+                if (prev === 3) return false;
                 if (toPlay < prev || prev === 7) return false;
                 break;
-            case 1: if (prev === 7) return false;
+            case 1: if (prev === 7 || prev === 3) return false;
         }
         return true;
     }

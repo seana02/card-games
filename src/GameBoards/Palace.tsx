@@ -5,6 +5,7 @@ import '../styles/palace.css';
 import '../styles/App.css';
 import Card, { Suit } from "../Card";
 import PalacePlayerCard from "../Components/PalacePlayerCard";
+import { PalaceData } from "@backend/Palace";
 
 interface PalaceProps {
     socket: Socket<ServerToClientEvents, ClientToServerEvents>
@@ -17,109 +18,98 @@ enum Game {
     IN_TURN,
     OUT_TURN,
     FINISHED,
+    THREE_MENU,
 }
 
-interface playerListTemplate {
+interface PlayerListTemplate {
     name: string,
     id: number,
-    displayed: ( { suit: number, value:number } | { back:number })[],
+    displayed: ({ suit: number, value: number } | { back: number })[],
     inHand: number,
 }
 
 const ordering: {[value: number]: number} = {
-    1: 10,
-    2: 11,
-    3: 13,
-    4: 1,
-    5: 2,
-    6: 3,
-    7: 4,
-    8: 5,
-    9: 6,
-    10: 12,
-    11: 7,
-    12: 8,
-    13: 9,
-    14: 10,
+     1: 10,  2: 11, 3: 13,
+     4: 1,   5: 2,  6: 3,
+     7: 4,   8: 5,  9: 6,
+    10: 12, 11: 7, 12: 8,
+    13: 9,  14: 10,
 }
 
 export default function Palace(props: PalaceProps) {
 
-    const [hand, _setHand] = useState<{suit:number, value:number, selected:boolean}[]>([]);
+    const [hand, _setHand] = useState<{ suit: number, value: number, selected: boolean }[]>([]);
     function setHand(newHand: { suit: number, value: number, selected: boolean }[]) {
         sortHand(newHand);
         _setHand(newHand);
     }
     const [state, setState] = useState(Game.SETUP);
-    const [playerList, setPlayerList] = useState<playerListTemplate[]>([]);
+    const [playerList, setPlayerList] = useState<PlayerListTemplate[]>([]);
 
-    const [discard, setDiscard] = useState<{suit: number, value: number}[]>([]);
+    const [discard, setDiscard] = useState<{ suit: number, value: number }[]>([]);
     const [pileCount, setPileCount] = useState(0);
 
-    const [threeMode, setThreeMode] = useState(false);
     const [id, setID] = useState(-1);
 
-    props.socket.on('initialize', (h: { suit: number, value: number }[], pC: number, id: number) => {
-        console.log('received initialize', h);
-        const hReady: { suit: number, value: number, selected: boolean }[] = [];
-        h.forEach(c => hReady.push({ suit: c.suit, value: c.value, selected: false}));
-        setHand(hReady);
-        setPileCount(pC);
-        setID(id);
+    // props.socket.on('initialize', (h: { suit: number, value: number }[], pC: number, id: number) => {
+    //     console.log('received initialize', h);
+    //     const hReady: { suit: number, value: number, selected: boolean }[] = [];
+    //     h.forEach(c => hReady.push({ suit: c.suit, value: c.value, selected: false }));
+    //     setHand(hReady);
+    //     setPileCount(pC);
+    //     setID(id);
+    // });
+
+    props.socket.on('initialize', id => setID(id));
+
+    props.socket.on('updatePublicData', (players: { name: string, id: number }[]) => {
+        let pList: PlayerListTemplate[] = [];
+        players.forEach((p, i) => {
+            pList.push({
+                name: p.name,
+                id: p.id,
+                displayed: playerList[i]?.displayed || [],
+                inHand: playerList[i]?.inHand || 0,
+            });
+        });
+        setPlayerList(pList);
     });
 
-    props.socket.on('playerList', players => {
-        setPlayerList(players);
+    props.socket.on('updateData', (data: PalaceData) => {
+        if (data.id !== id) console.log('ERROR: incorrect data sent');
+        setHand(data.cards.map(c => ({ ...c, selected: false })));
+        let pList: PlayerListTemplate[] = [];
+        playerList.forEach((p, i) => {
+            pList.push({
+                name: p.name,
+                id: p.id,
+                displayed: data.shared.displayed[i],
+                inHand: data.shared.count[i],
+            });
+        });
+        setPlayerList(pList);
+        setPileCount(data.shared.draw_count);
+        setDiscard(data.shared.center);
     });
-
-    props.socket.on('setupResponse', (success: boolean, hand: { suit: number, value: number }[]) => {
-        if (success) {
-            setState(Game.SETUP_DONE);
-            setHand(hand.map(c => ({ ...c, selected: false })));
-        }
-    });
-
-    props.socket.on('updateInfo', updatePlayerList);
-
-    props.socket.on('setupComplete', () => { setState(Game.OUT_TURN); });
 
     props.socket.on('startTurn', () => { setState(Game.IN_TURN); });
 
-    props.socket.on('endTurn', () => { setState(Game.OUT_TURN); });
+    props.socket.on('completionInterrupt', () => setState(Game.OUT_TURN));
 
-    props.socket.on('playSuccess', (cards: { suit: number, value: number }[]) => {
-        const newHand = hand.filter(c => !c.selected);
-        cards.forEach(c => newHand.push({ suit: c.suit, value: c.value, selected: false }));
-        setState(Game.OUT_TURN);
-        setHand(newHand);
-    });
+    props.socket.on('promptThreeTarget', () => setState(Game.THREE_MENU));
 
-    props.socket.on('takeSuccess', (cards: { suit: number, value: number }[]) => {
-        setHand([...hand, ...cards.map(c => ({ suit: c.suit, value: c.value, selected: false }))]);
-        setState(Game.OUT_TURN);
-    })
-
-    props.socket.on('updateCenter', (cards: { suit: number, value: number }[], count: number) => {
-        setDiscard(cards);
-        setPileCount(count);
-    });
-
-    props.socket.on('playThree', () => {
-        setThreeMode(true);
-    });
-    
     // emits the ready signal only on the first load
     useEffect(() => { props.socket.emit('ready') }, []);
 
     return (
         <div className="game-board" id="palace-board">
-            {threeMode ? getThreeMenu() : <></>}
+            {state === Game.THREE_MENU ? getThreeMenu() : <></>}
             <div className="top">
                 <div className="main">
                     <div className="main-deck">
                         {getDiscardPile()}
                         <div className="draw-pile">
-                            <Card card={{back: 0}} className={""} onClick={() => {}}>
+                            <Card card={{ back: 0 }} className={""} onClick={() => { }}>
                                 <div className="draw-pile-count">{pileCount}</div>
                             </Card>
                         </div>
@@ -151,8 +141,9 @@ export default function Palace(props: PalaceProps) {
             case Game.SETUP: {
                 if (inds.length < 3) {
                     console.log('not enough cards');
+                    return;
                 } else {
-                    props.socket.emit('setup', inds);               
+                    props.socket.emit('setup', inds);
                 }
                 break;
             }
@@ -164,12 +155,13 @@ export default function Palace(props: PalaceProps) {
                 }
             }
         }
+        setState(Game.OUT_TURN);
     }
 
     function completion() {
 
     }
-    
+
     function sortHand(newHand: { suit: number, value: number, selected: boolean }[]) {
         return newHand.sort((a, b) => {
             if (a.suit == Suit.Joker && b.suit == Suit.Joker) return a.value - b.value;
@@ -202,18 +194,18 @@ export default function Palace(props: PalaceProps) {
             );
         });
         return (
-            <div className="card-group" style={{gridTemplateColumns: `repeat(${content.length}, calc(60vw / ${content.length}))`}}>{content}</div>
+            <div className="card-group" style={{ gridTemplateColumns: `repeat(${content.length}, calc(60vw / ${content.length}))` }}>{content}</div>
         );
     }
 
     function getDiscardPile() {
         let content: React.JSX.Element[] = [];
         discard.forEach(c => content.push(
-            <Card card={c} className={""} onClick={() => {}} />
+            <Card card={c} className={""} onClick={() => { }} />
         ));
 
         return (
-            <div className="discard-pile" style={{gridTemplateColumns: `repeat(${content.length}, 1vw)`, width: `max(8rem, calc(8rem + ${content.length - 1}vw))`}} onClick={takeDiscard}>
+            <div className="discard-pile" style={{ gridTemplateColumns: `repeat(${content.length}, 1vw)`, width: `max(8rem, calc(8rem + ${content.length - 1}vw))` }} onClick={takeDiscard}>
                 {content}
             </div>
         );
@@ -228,10 +220,10 @@ export default function Palace(props: PalaceProps) {
                     {p.name}
                     <div className="display-card-group">
                         <div className="display-card">{p.inHand || 0}</div>
-                        <div style={{width: "8px"}}></div>
-                        <div className="display-card">{<Card card={p.displayed[0]} className={"small"} onClick={() => {}} />}</div>
-                        <div className="display-card">{<Card card={p.displayed[1]} className={"small"} onClick={() => {}} />}</div>
-                        <div className="display-card">{<Card card={p.displayed[2]} className={"small"} onClick={() => {}} />}</div>
+                        <div style={{ width: "8px" }}></div>
+                        <div className="display-card">{<Card card={p.displayed[0]} className={"small"} onClick={() => { }} />}</div>
+                        <div className="display-card">{<Card card={p.displayed[1]} className={"small"} onClick={() => { }} />}</div>
+                        <div className="display-card">{<Card card={p.displayed[2]} className={"small"} onClick={() => { }} />}</div>
                     </div>
                 </div>
             );
@@ -249,11 +241,13 @@ export default function Palace(props: PalaceProps) {
     }
 
     function targetPlayer(index: number) {
-        console.log(playerList[index].id);
+        props.socket.emit('targetPlayer', playerList[index].id);
+        setState(Game.OUT_TURN);
     }
 
     function takeDiscard() {
         props.socket.emit('takeCards');
+        setState(Game.OUT_TURN);
     }
 
     function isButtonActive() {
@@ -262,13 +256,14 @@ export default function Palace(props: PalaceProps) {
             case Game.IN_TURN:
                 return ["enabled", "enabled"]
             case Game.OUT_TURN:
+            case Game.THREE_MENU:
                 return ["disabled", "enabled"]
             default: return ["disabled", "disabled"]
         }
     }
 
     type data = {
-        displayed: ( {suit: number, value:number} | {back:number} )[],
+        displayed: ({ suit: number, value: number } | { back: number })[],
         inHand: number
     }
     function updatePlayerList(id: number, data: data) {

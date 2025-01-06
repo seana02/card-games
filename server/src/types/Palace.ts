@@ -14,8 +14,19 @@ export type PalacePlayer = {
 export type GameState = {
     drawPile: Deck,
     centerPile: Deck,
-    lastPlayed: Card[],
+    lastPlayed: { suit: number, value: number }[],
     playerList: PalacePlayer[],
     currentPlayer: number,
     threeUser: number,
+}
+export type Shared = {
+    center: { suit: number, value: number }[],
+    draw_count: number,
+    displayed: {[id: number]: ({ suit: number, value: number } | { back: number })[]},
+    count: {[id: number]: number}
+}
+export type PalaceData = {
+    id: number,
+    cards: { suit: number, value: number }[],
+    shared: Shared
 }
