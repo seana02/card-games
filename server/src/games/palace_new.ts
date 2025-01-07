@@ -257,10 +257,12 @@ export class GameState {
         if (!playerInPlay(this.playerList[playerID])) return this;
         // board state invalid
         if (!checkPlayable(this.centerPile)) return this;
+        // center pile is empty
+        if (!this.centerPile || this.centerPile.length === 0) return this;
         let value = this.centerPile.peek(1).value;
         let currCount = 1;
 
-        while (value === this.centerPile.peek(currCount + 1).value) {
+        while (value === this.centerPile.peek(currCount + 1)?.value) {
             currCount++;
         }
 
@@ -275,7 +277,7 @@ export class GameState {
         if (currCount + indices.length === 4) {
             let newState = cloneState(this);
             newState.currentPlayer = playerID;
-            return this.playCards(indices);
+            return newState.playCards(indices);
         }
 
         return this;
@@ -293,11 +295,16 @@ function applyEffectsHelper(state: GameState, value: number, count: number) {
     console.log("applying effects");
     // apply effect
     if (value === 3) {
-        let tmp = state.currentPlayer;
-        if (state.threeUser !== -1) {
-            state.currentPlayer = state.threeUser;
+        if (state.centerPile.length === 0) {
+            state.centerPile.clear();
+            state.lastPlayed = [];
+        } else {
+            let tmp = state.currentPlayer;
+            if (state.threeUser !== -1) {
+                state.currentPlayer = state.threeUser;
+            }
+            state.threeUser = tmp;
         }
-        state.threeUser = tmp;
     } else if (value === 8) {
         let eightPlayer = state.currentPlayer
         for (let i = 0; i < count; i++) {

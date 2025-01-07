@@ -50,6 +50,7 @@ export default function Palace(props: PalaceProps) {
     const [pileCount, setPileCount] = useState(0);
 
     const [id, setID] = useState(-1);
+    const [completionButton, setCompletionButton] = useState("enabled");
 
     // props.socket.on('initialize', (h: { suit: number, value: number }[], pC: number, id: number) => {
     //     console.log('received initialize', h);
@@ -90,6 +91,7 @@ export default function Palace(props: PalaceProps) {
         setPlayerList(pList);
         setPileCount(data.shared.draw_count);
         setDiscard(data.shared.center);
+        setCompletionButton("enabled");
     });
 
     props.socket.on('startTurn', () => { setState(Game.IN_TURN); });
@@ -115,10 +117,10 @@ export default function Palace(props: PalaceProps) {
                         </div>
                     </div>
                     <div className="action-buttons">
-                        <div className={`action button-submit ${isButtonActive()[0]}`} onClick={submit}>
+                        <div className={`action button-submit ${isSubmitActive()}`} onClick={submit}>
                             Send
                         </div>
-                        <div className={`action button-completion ${isButtonActive()[1]}`} onClick={completion}>
+                        <div className={`action button-completion ${completionButton}`} onClick={completion}>
                             Complete
                         </div>
                     </div>
@@ -159,7 +161,8 @@ export default function Palace(props: PalaceProps) {
     }
 
     function completion() {
-
+        props.socket.emit('complete');
+        setCompletionButton("disabled");
     }
 
     function sortHand(newHand: { suit: number, value: number, selected: boolean }[]) {
@@ -250,17 +253,17 @@ export default function Palace(props: PalaceProps) {
         setState(Game.OUT_TURN);
     }
 
-    function isButtonActive() {
+    function isSubmitActive() {
         switch (state) {
             case Game.SETUP:
             case Game.IN_TURN:
-                return ["enabled", "enabled"]
+                return "enabled";
             case Game.OUT_TURN:
             case Game.THREE_MENU:
-                return ["disabled", "enabled"]
-            default: return ["disabled", "disabled"]
+            default:
+                return "disabled";
         }
-    }
+    } 
 
     type data = {
         displayed: ({ suit: number, value: number } | { back: number })[],
