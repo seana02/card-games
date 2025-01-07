@@ -35,12 +35,14 @@ export default class Palace {
     public _globalState: GameState
     private _room: Room;
     private ready: boolean[];
+    private completionBlocked: boolean[];
 
     constructor(room: Room, players: Player[], cardRules: CardEffects[] = defaultEffects) {
         this._room = room;
         if (players.length < 1) throw Error("Requires at least 2 players");
         this._globalState = new GameState(players);
         this.ready = new Array(players.length).fill(false);
+        this.completionBlocked = new Array(players.length).fill(false);
 
         room.emit('gameStart', "palace");
 
@@ -77,6 +79,7 @@ export default class Palace {
                 if (p.id === this._globalState.currentPlayer) {
                     this._globalState = this._globalState.playCards(inds);
                 }
+                this.completionBlocked.fill(false);
                 this.send();
                 if (this._globalState.threeUser === this._globalState.currentPlayer) {
                     this._globalState.playerList[this._globalState.currentPlayer].sock.emit('promptThreeTarget');
@@ -89,14 +92,24 @@ export default class Palace {
                 if (p.id === this._globalState.currentPlayer) {
                     this._globalState = this._globalState.takeCards();
                 }
+                this.completionBlocked.fill(false);
                 this.send();
                 this._globalState.playerList[this._globalState.currentPlayer].sock.emit('startTurn');
             });
 
             p.sock.on('complete', () => {
+                // prevent spamming completions, re-enabled on card play or take
+                if (this.completionBlocked[p.id]) return;
+                // if center pile is empty, completion is impossible
+                if (this._globalState.centerPile.length === 0) return;
+                this.completionBlocked[p.id] = true;
                 this._globalState.playerList[this._globalState.currentPlayer].sock.emit('completionInterrupt');
                 this._globalState = this._globalState.complete(p.id);
-                this.send();
+                // only sends if completion succeeded, indicated by empty center pile
+                // possibility of being empty beforehand considered earlier
+                if (this._globalState.centerPile.length === 0) {
+                    this.send();
+                }
                 this._globalState.playerList[this._globalState.currentPlayer].sock.emit('startTurn');
             });
 
