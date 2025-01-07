@@ -52,15 +52,6 @@ export default function Palace(props: PalaceProps) {
     const [id, setID] = useState(-1);
     const [completionButton, setCompletionButton] = useState("enabled");
 
-    // props.socket.on('initialize', (h: { suit: number, value: number }[], pC: number, id: number) => {
-    //     console.log('received initialize', h);
-    //     const hReady: { suit: number, value: number, selected: boolean }[] = [];
-    //     h.forEach(c => hReady.push({ suit: c.suit, value: c.value, selected: false }));
-    //     setHand(hReady);
-    //     setPileCount(pC);
-    //     setID(id);
-    // });
-
     props.socket.on('initialize', id => setID(id));
 
     props.socket.on('updatePublicData', (players: { name: string, id: number }[]) => {
@@ -77,7 +68,7 @@ export default function Palace(props: PalaceProps) {
     });
 
     props.socket.on('updateData', (data: PalaceData) => {
-        if (data.id !== id) console.log('ERROR: incorrect data sent');
+        if (data.id !== id) logWarning('Sent data id does not match local id');
         setHand(data.cards.map(c => ({ ...c, selected: false })));
         let pList: PlayerListTemplate[] = [];
         playerList.forEach((p, i) => {
@@ -218,15 +209,15 @@ export default function Palace(props: PalaceProps) {
         let content: React.JSX.Element[] = [];
         playerList.forEach((p, i) => {
             if (id == p.id) return;
+            let minicards = [0,1,2].map(i => <div className="display-card">{<Card card={p.displayed[i]} className={"small"} onClick={() => { }} />}</div>);
             content.push(
                 <div className="player-card" onClick={() => targetPlayer(i)}>
                     {p.name}
+                    <div style={{ width: "8px" }}></div>
                     <div className="display-card-group">
                         <div className="display-card">{p.inHand || 0}</div>
                         <div style={{ width: "8px" }}></div>
-                        <div className="display-card">{<Card card={p.displayed[0]} className={"small"} onClick={() => { }} />}</div>
-                        <div className="display-card">{<Card card={p.displayed[1]} className={"small"} onClick={() => { }} />}</div>
-                        <div className="display-card">{<Card card={p.displayed[2]} className={"small"} onClick={() => { }} />}</div>
+                        {minicards}
                     </div>
                 </div>
             );
@@ -264,23 +255,16 @@ export default function Palace(props: PalaceProps) {
                 return "disabled";
         }
     } 
-
-    type data = {
-        displayed: ({ suit: number, value: number } | { back: number })[],
-        inHand: number
-    }
-    function updatePlayerList(id: number, data: data) {
-        if (data.displayed) {
-            setPlayerList(playerList.map(p => {
-                if (p.id !== id) return p;
-                return {
-                    ...p,
-                    displayed: data.displayed,
-                    inHand: data.inHand,
-                }
-            }));
-        }
-    }
-
 }
 
+function logMessage(message: string) {
+    console.log(`%c[Palace]%c: ${message}`, "color: blue", "color: initial");
+}
+
+function logWarning(message: string) {
+    console.log(`%c[WARN]%c: ${message}`, "color: yellow", "color: initial");
+}
+
+function logError(message: string) {
+    console.log(`%c[ERROR]%c: ${message}`, "color: red", "color: initial");
+}
