@@ -4,7 +4,7 @@ type Card = { suit: number, value: number };
 type Back = { back: number };
 
 export type ServerToClientEvents = {
-    join: (roomCreated: boolean, players: { name: string, leader: boolean }[]) => void;
+    join: (roomCreated: boolean, players: { name: string, leader: boolean }[], id: number) => void;
     joinSpectator: () => void;
     lobbyPlayerUpdate: (newPlayer: {name: string, leader: boolean}[]) => void;
     gameStart: (game: string) => void;
@@ -22,7 +22,6 @@ export type ServerToClientEvents = {
     // playThree: () => void;
 
     // Palace
-    initialize: (id: number) => void;
     updatePublicData: (players: {name: string, id: number}[]) => void;
     updateData: (data: PalaceData) => void;
     startTurn: () => void;
@@ -34,10 +33,12 @@ export type ClientToServerEvents = {
     attemptJoin: (roomID: number, name: string) => void;
     startGame: (options: { nineReverse: boolean }) => void;
     ready: () => void;
+    idReceived: () => void;
 
     // Palace
     setup: (inds: number[]) => void;
     playCards: (inds: number[]) => void;
+    playHidden: (ind: number) => void;
     takeCards: () => void;
     complete: () => void;
     targetPlayer: (targetID: number) => void;

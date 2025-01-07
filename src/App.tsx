@@ -14,6 +14,7 @@ export default function App() {
     const [room, setRoom] = useState(0);
     const [roomLeader, setLeader] = useState(false);
     const [playerList, setPlayerList] = useState<Array<{ name: string, leader: boolean }>>([]);
+    const [id, setID] = useState(-1);
     const [socket, _]: [Socket<socketTypes.ServerToClientEvents, socketTypes.ClientToServerEvents>, any] = useState(io('http://localhost:3000', {
         autoConnect: false
     }));
@@ -25,12 +26,13 @@ export default function App() {
         setPlayerList(newPlayerList);
     });
 
-    socket.on("join", (roomCreated, players) => {
+    socket.on("join", (roomCreated, players, id) => {
         if (roomCreated) {
             setLeader(true);
         }
         setPlayerList(players);
         setScreen("lobby");
+        setID(id);
     });
 
     socket.on("joinSpectator", () => {
@@ -60,6 +62,7 @@ export default function App() {
             return <Palace
                     name={name}
                     socket={socket}
+                    id={id}
                 />
         default:
             return <Login
