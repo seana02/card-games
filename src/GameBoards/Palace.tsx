@@ -274,15 +274,15 @@ export default function Palace(props: PalaceProps) {
         let content: React.JSX.Element[] = [];
         playerList.forEach((p, i) => {
             if (props.id == p.id) return;
+            let minicards = [0,1,2].map(i => <div className="display-card">{<Card card={p.displayed[i]} className={"small"} onClick={() => { }} />}</div>);
             content.push(
                 <div className="player-card" onClick={() => targetPlayer(i)}>
                     {p.name}
+                    <div style={{ width: "8px" }}></div>
                     <div className="display-card-group">
                         <div className="display-card">{p.inHand || 0}</div>
                         <div style={{ width: "8px" }}></div>
-                        <div className="display-card">{<Card card={p.displayed[0]} className={"small"} onClick={() => { }} />}</div>
-                        <div className="display-card">{<Card card={p.displayed[1]} className={"small"} onClick={() => { }} />}</div>
-                        <div className="display-card">{<Card card={p.displayed[2]} className={"small"} onClick={() => { }} />}</div>
+                        {minicards}
                     </div>
                 </div>
             );
@@ -335,3 +335,14 @@ export default function Palace(props: PalaceProps) {
 
 }
 
+function logMessage(message: string) {
+    console.log(`%c[Palace]%c: ${message}`, "color: blue", "color: initial");
+}
+
+function logWarning(message: string) {
+    console.log(`%c[WARN]%c: ${message}`, "color: yellow", "color: initial");
+}
+
+function logError(message: string) {
+    console.log(`%c[ERROR]%c: ${message}`, "color: red", "color: initial");
+}

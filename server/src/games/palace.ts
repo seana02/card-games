@@ -44,10 +44,6 @@ export default class Palace {
         this.readyState = new Array(players.length).fill(0);
         this.completionBlocked = new Array(players.length).fill(false);
 
-        room.emit('gameStart', "palace");
-
-        room.emit('updatePublicData', this._globalState.playerList.map((p, i) => ({ name: p.name, id: this._globalState.playerList[i].id })));
-
         this._globalState.playerList.forEach((p, i) => {
             p.sock.on('ready', () => {
                 this.readyState[p.id] = 1;
@@ -60,6 +56,7 @@ export default class Palace {
             p.sock.on('setup', (inds: number[]) => {
                 console.log('received setup from player', p.id);
                 this._globalState = this._globalState.setup(i, inds);
+                console.log('setup sending state', this._globalState.playerList);
                 this.send();
                 let ready = true;
                 for (let i = 0; i < this._globalState.playerList.length && ready; i++) {
@@ -132,10 +129,13 @@ export default class Palace {
             });
 
         });
+
+        room.emit('gameStart', "palace");
     }
 
     send() {
         let shared: Shared = {
+            names: {},
             center: this._globalState.lastPlayed.map(c => ({ suit: c.suit, value: c.value })),
             draw_count: this._globalState.drawPile.length,
             displayed: {},
@@ -152,7 +152,8 @@ export default class Palace {
                     return null;
                 }
             });
-            shared.count[this._globalState.playerList[id].id] = this._globalState.playerList[id].hand.length; 
+            shared.count[player.id] = player.hand.length; 
+            shared.names[player.id] = player.name
         }
         for (let i = 0; i < this._globalState.playerList.length; i++) {
             let player_data: PalaceData = {
@@ -160,6 +161,7 @@ export default class Palace {
                 cards: this._globalState.playerList[i].hand.map(c => ({ suit: c.suit, value: c.value })),
                 shared
             }
+            console.log('sending updateData', player_data.shared.displayed);
             this._globalState.playerList[i].sock.emit('updateData', player_data);
         }
     }
