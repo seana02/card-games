@@ -1,5 +1,5 @@
 import { ClientToServerEvents, ServerToClientEvents } from "@backend/Socket";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Socket } from "socket.io-client";
 import '../styles/palace.css';
 import '../styles/App.css';
@@ -10,14 +10,13 @@ import { PalaceData } from "@backend/Palace";
 interface PalaceProps {
     socket: Socket<ServerToClientEvents, ClientToServerEvents>
     name: string
+    id: number
 }
 
 enum Game {
     SETUP,
-    SETUP_DONE,
     IN_TURN,
     OUT_TURN,
-    FINISHED,
     THREE_MENU,
 }
 
@@ -43,44 +42,56 @@ export default function Palace(props: PalaceProps) {
         sortHand(newHand);
         _setHand(newHand);
     }
+    const [hidden, setHidden] = useState<({ suit: number, value: number, selected: boolean}|{ back: number, selected: boolean })[]>([]);
     const [state, setState] = useState(Game.SETUP);
     const [playerList, setPlayerList] = useState<PlayerListTemplate[]>([]);
 
     const [discard, setDiscard] = useState<{ suit: number, value: number }[]>([]);
     const [pileCount, setPileCount] = useState(0);
 
-    const [id, setID] = useState(-1);
     const [completionButton, setCompletionButton] = useState("enabled");
 
-    props.socket.on('initialize', id => setID(id));
+    // sets listeners emits ready only on first load
+    useEffect(() => {
+        props.socket.on('updateData', (data: PalaceData) => {
+            if (data.id !== props.id) console.log('ERROR: incorrect data sent');
+            setHand(data.cards.map(c => ({ ...c, selected: false })));
+            setHidden(data.shared.displayed[props.id].map(c => ({ ...c, selected: false })));
+            let pList: PlayerListTemplate[] = [];
+            for (let i = 0; i < Object.keys(data.shared.names).length; i++) {
+                pList.push({
+                    name: data.shared.names[i],
+                    id: i,
+                    displayed: data.shared.displayed[i],
+                    inHand: data.shared.count[i],
+                });
+            }
+            setPlayerList(pList);
+            setPileCount(data.shared.draw_count);
+            setDiscard(data.shared.center);
+            setCompletionButton("enabled");
+        });
 
-    props.socket.on('updateData', (data: PalaceData) => {
-        if (data.id !== id) logWarning('Sent data id does not match local id');
-        setHand(data.cards.map(c => ({ ...c, selected: false })));
-        let pList: PlayerListTemplate[] = [];
-        for (let i = 0; i < Object.keys(data.shared.names).length; i++) {
-            pList.push({
-                name: data.shared.names[i],
-                id: i,
-                displayed: data.shared.displayed[i],
-                inHand: data.shared.count[i],
-            });
+        props.socket.on('startTurn', () => {
+            setState(Game.IN_TURN);
+        });
+
+        props.socket.on('completionInterrupt', () => setState(Game.OUT_TURN));
+
+        props.socket.on('promptThreeTarget', () => setState(Game.THREE_MENU));
+
+        props.socket.emit('ready');
+
+        return () => {
+            props.socket.off('updatePublicData', () => console.log('Unsubscribed from updatePublicData'));
+            props.socket.off('updateData', () => console.log('Unsubscribed from updateData'));
+            props.socket.off('startTurn', () => console.log('Unsubscribed from startTurn'));
+            props.socket.off('completionInterrupt', () => console.log('Unsubscribed from completionInterrupt'));
+            props.socket.off('promptThreeTarget', () => console.log('Unsubscribed from promptThreeTarget'))
         }
-        setPlayerList(pList);
-        console.log('update data', pList);
-        setPileCount(data.shared.draw_count);
-        setDiscard(data.shared.center);
-        setCompletionButton("enabled");
-    });
+    }, []);
 
-    props.socket.on('startTurn', () => { setState(Game.IN_TURN); });
-
-    props.socket.on('completionInterrupt', () => setState(Game.OUT_TURN));
-
-    props.socket.on('promptThreeTarget', () => setState(Game.THREE_MENU));
-
-    // emits the ready signal only on the first load
-    useEffect(() => { props.socket.emit('ready') }, []);
+    // useEffect(() => { props.socket.emit('ready') });
 
     return (
         <div className="game-board" id="palace-board">
@@ -117,22 +128,44 @@ export default function Palace(props: PalaceProps) {
     );
 
     function submit() {
-        const inds = hand.map((c, i) => c.selected ? i : -1).filter(i => i !== -1);
-        switch (state) {
-            case Game.SETUP: {
-                if (inds.length < 3) {
-                    console.log('not enough cards');
-                    return;
-                } else {
-                    props.socket.emit('setup', inds);
+        if (isHiddenShown()) {
+            let chosen = -1;
+            for (let i = 0; i < 3; i++) {
+                if (hidden[i].selected) {
+                    if (chosen === -1) {
+                        chosen = i;
+                    }
+                    else {
+                        console.log('too many cards selected');
+                        return; 
+                    }
                 }
-                break;
             }
-            case Game.IN_TURN: {
-                if (inds.length < 0) {
-                    console.log('not enough cards');
-                } else {
-                    props.socket.emit('playCards', inds);
+            if (chosen === -1) {
+                console.log('not enough cards');
+                return;
+            }
+            props.socket.emit('playHidden', chosen);
+        } else {
+            const inds = hand.map((c, i) => c.selected ? i : -1).filter(i => i !== -1);
+            switch (state) {
+                case Game.SETUP: {
+                    if (inds.length < 3) {
+                        console.log('not enough cards');
+                        return;
+                    } else {
+                        props.socket.emit('setup', inds);
+                    }
+                    break;
+                }
+                case Game.IN_TURN: {
+                    if (inds.length < 0) {
+                        console.log('not enough cards');
+                        return;
+                    } else {
+                        props.socket.emit('playCards', inds);
+                    }
+                    break;
                 }
             }
         }
@@ -154,16 +187,41 @@ export default function Palace(props: PalaceProps) {
     }
 
     function clickCard(i: number) {
-        setHand(hand.map((ca, ia) => {
-            if (ia == i && (state !== 0 || ca.selected || hand.reduce((x, c) => x + (+c.selected), 0) < 3)) {
-                ca.selected = !ca.selected;
-            }
-            return ca;
-        }));
+        if (isHiddenShown()) {
+            setHidden(hidden.map((ca, ia) => {
+                if (ia == i && (ca.selected || hidden.reduce((x,c) => x + (+c.selected), 0) < 1)) {
+                    ca.selected = !ca.selected;
+                }
+                return ca;
+            }));
+        } else {
+            setHand(hand.map((ca, ia) => {
+                if (ia == i && (state !== 0 || ca.selected || hand.reduce((x, c) => x + (+c.selected), 0) < 3)) {
+                    ca.selected = !ca.selected;
+                }
+                return ca;
+            }));
+        }
     }
 
     function getCards() {
         const content: React.JSX.Element[] = [];
+
+        if (isHiddenShown()) {
+            hidden.forEach((c,i) => {
+                content.push(
+                    <Card
+                        card={c}
+                        onClick={() => clickCard(i)}
+                        className={"interactable " + (hidden[i].selected ? "selected" : "")}
+                        clickable={true}
+                    />
+                );
+            });
+            return (
+                <div className="card-group" style={{ gridTemplateColumns: `repeat(3, 20vw)` }}>{content}</div>
+            );
+        }
 
         hand.forEach((c, i) => {
             content.push(
@@ -196,7 +254,7 @@ export default function Palace(props: PalaceProps) {
     function getThreeMenu() {
         let content: React.JSX.Element[] = [];
         playerList.forEach((p, i) => {
-            if (id == p.id) return;
+            if (props.id == p.id) return;
             let minicards = [0,1,2].map(i => <div className="display-card">{<Card card={p.displayed[i]} className={"small"} onClick={() => { }} />}</div>);
             content.push(
                 <div className="player-card" onClick={() => targetPlayer(i)}>
@@ -243,6 +301,19 @@ export default function Palace(props: PalaceProps) {
                 return "disabled";
         }
     } 
+
+    function isHiddenShown() {
+        if (!playerList) return false;
+        if (!playerList[props.id]) return false;
+        if (hand.length !== 0) return false;
+        for (let i = 0; i < 3; i++) {
+            if (playerList[props.id].displayed[i] && "back" in playerList[props.id].displayed[i]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 }
 
 function logMessage(message: string) {

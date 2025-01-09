@@ -21,7 +21,7 @@ const io = new Server<
 
 const games: { [room: number]: Palace } = {};
 const waiting: { [room: number]: Player[] } = {};
-const playerList = (room: number) => waiting[room].map((p: Player) => ({ name: p.name, leader: p.leader }));
+const playerList = (room: number) => waiting[room].map((p: Player, i: number) => ({ id: i, name: p.name, leader: p.leader }));
 
 io.on('connection', socket => {
     let room: number = null;
@@ -47,8 +47,9 @@ io.on('connection', socket => {
         socket.join(`${roomID}`);
 
         waiting[roomID].push({ uuid: socket.id, name: _name, conn: socket, leader: roomCreated });
-        socket.emit('join', roomCreated, playerList(roomID)); // emits to only socket
-        socket.to(`${roomID}`).emit('lobbyPlayerUpdate', playerList(roomID)); // emits to all in roomID except socket
+        let list = playerList(roomID);
+        socket.emit('join', roomCreated, list, list.length - 1); // emits to only socket
+        socket.to(`${roomID}`).emit('lobbyPlayerUpdate', list); // emits to all in roomID except socket
     });
 
     socket.on('disconnect', () => {

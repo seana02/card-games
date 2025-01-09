@@ -91,7 +91,7 @@ export default function Card(props: CardProps) {
     let [selected, setSelected] = useState(false);
 
     let toReturn;
-    if (!props.card) toReturn = <></>;
+    if (!props.card || ("selected" in props.card && Object.keys(props.card).length === 1)) toReturn = <></>;
     else if ("card" in props.card) toReturn = cardsStr[props.card.card];
     else if ("suit" in props.card && "value" in props.card) toReturn = cards[props.card.suit][props.card.value];
     else if ("joker" in props.card) toReturn = cards[Suit.Joker][props.card.joker];

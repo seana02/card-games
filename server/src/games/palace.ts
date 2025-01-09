@@ -34,26 +34,21 @@ const ordering: {[value: number]: number} = {
 export default class Palace {
     public _globalState: GameState
     private _room: Room;
-    private ready: boolean[];
+    private readyState: number[];
     private completionBlocked: boolean[];
 
     constructor(room: Room, players: Player[], cardRules: CardEffects[] = defaultEffects) {
         this._room = room;
         if (players.length < 1) throw Error("Requires at least 2 players");
         this._globalState = new GameState(players);
-        this.ready = new Array(players.length).fill(false);
+        this.readyState = new Array(players.length).fill(0);
         this.completionBlocked = new Array(players.length).fill(false);
 
         this._globalState.playerList.forEach((p, i) => {
             p.sock.on('ready', () => {
-                this.ready[p.id] = true;
-
-                console.log('received ready from player', p.id, 'ready array:', this.ready, 'filter:');
-                if (this.ready.filter(b => !b).length === 0) {
+                this.readyState[p.id] = 1;
+                if (this.readyState.filter(b => b !== 1).length === 0) {
                     console.log('initializing');
-                    this._globalState.playerList.forEach(p => {
-                        p.sock.emit('initialize', p.id);
-                    });
                     this.send();
                 }
             });
@@ -78,6 +73,18 @@ export default class Palace {
                     this._globalState = this._globalState.playCards(inds);
                 }
                 this.completionBlocked.fill(false);
+                this.send();
+                if (this._globalState.threeUser === this._globalState.currentPlayer) {
+                    this._globalState.playerList[this._globalState.currentPlayer].sock.emit('promptThreeTarget');
+                } else {
+                    this._globalState.playerList[this._globalState.currentPlayer].sock.emit('startTurn');
+                }
+            });
+
+            p.sock.on('playHidden', (ind: number) => {
+                if (p.id === this._globalState.currentPlayer) {
+                    this._globalState = this._globalState.playHidden(ind);
+                }
                 this.send();
                 if (this._globalState.threeUser === this._globalState.currentPlayer) {
                     this._globalState.playerList[this._globalState.currentPlayer].sock.emit('promptThreeTarget');
@@ -134,12 +141,12 @@ export default class Palace {
             displayed: {},
             count: {}
         }
-        for (let i = 0; i < this._globalState.playerList.length; i++) {
-            let player = this._globalState.playerList[i];
-            shared.displayed[player.id] = [0,1,2].map(v => {
-                if (player.revealed[v]) {
-                    return { suit: player.revealed[v].suit, value: player.revealed[v].value };
-                } else if (player.hidden[v]) {
+        for (let id = 0; id < this._globalState.playerList.length; id++) {
+            let player = this._globalState.playerList[id];
+            shared.displayed[player.id] = [0,1,2].map(i => {
+                if (player.revealed[i]) {
+                    return { suit: player.revealed[i].suit, value: player.revealed[i].value };
+                } else if (player.hidden[i]) {
                     return { back: 0 };
                 } else {
                     return null;
