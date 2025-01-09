@@ -56,7 +56,6 @@ export default class Palace {
             p.sock.on('setup', (inds: number[]) => {
                 console.log('received setup from player', p.id);
                 this._globalState = this._globalState.setup(i, inds);
-                console.log('setup sending state', this._globalState.playerList);
                 this.send();
                 let ready = true;
                 for (let i = 0; i < this._globalState.playerList.length && ready; i++) {
@@ -161,7 +160,6 @@ export default class Palace {
                 cards: this._globalState.playerList[i].hand.map(c => ({ suit: c.suit, value: c.value })),
                 shared
             }
-            console.log('sending updateData', player_data.shared.displayed);
             this._globalState.playerList[i].sock.emit('updateData', player_data);
         }
     }
