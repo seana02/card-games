@@ -22,6 +22,7 @@ const io = new Server<
 const games: { [room: number]: Palace } = {};
 const waiting: { [room: number]: Player[] } = {};
 const playerList = (room: number) => waiting[room].map((p: Player, i: number) => ({ id: i, name: p.name, leader: p.leader }));
+const inGame: { [socketID: string]: number } = {};
 
 io.on('connection', socket => {
     let room: number = null;
@@ -29,8 +30,11 @@ io.on('connection', socket => {
     console.log(`${socket.id} connected`);
 
     socket.on('attemptJoin', (roomID: number, _name: string) => {
+        if (inGame[socket.id] && inGame[socket.id] !== -1) return;
         room = roomID;
         name = _name;
+
+        inGame[socket.id] = room;
 
         // if rooms already has an active game, join as spectator
         if (games[roomID]) {
@@ -54,6 +58,7 @@ io.on('connection', socket => {
 
     socket.on('disconnect', () => {
         console.log(`${socket.id} disconnected`);
+        delete inGame[socket.id];
         if(waiting[room]) {
             const removed = waiting[room].splice(waiting[room].findIndex((p: Player) => p.conn == socket), 1)[0];
             if (waiting[room]?.length < 1) {
