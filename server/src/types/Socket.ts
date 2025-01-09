@@ -1,8 +1,5 @@
 import { PalaceData } from "./Palace";
 
-type Card = { suit: number, value: number };
-type Back = { back: number };
-
 export type ServerToClientEvents = {
     join: (roomCreated: boolean, players: { name: string, leader: boolean }[], id: number) => void;
     joinSpectator: () => void;

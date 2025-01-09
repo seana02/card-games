@@ -1,5 +1,5 @@
 import { ClientToServerEvents, ServerToClientEvents } from "@backend/Socket";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Socket } from "socket.io-client";
 import '../styles/palace.css';
 import '../styles/App.css';
@@ -54,7 +54,7 @@ export default function Palace(props: PalaceProps) {
     // sets listeners emits ready only on first load
     useEffect(() => {
         props.socket.on('updateData', (data: PalaceData) => {
-            if (data.id !== props.id) console.log('ERROR: incorrect data sent');
+            if (data.id !== props.id) logWarning('Incorrect data sent');
             setHand(data.cards.map(c => ({ ...c, selected: false })));
             setHidden(data.shared.displayed[props.id].map(c => ({ ...c, selected: false })));
             let pList: PlayerListTemplate[] = [];
@@ -66,6 +66,7 @@ export default function Palace(props: PalaceProps) {
                     inHand: data.shared.count[i],
                 });
             }
+            logMessage("updating data");
             setPlayerList(pList);
             setPileCount(data.shared.draw_count);
             setDiscard(data.shared.center);
@@ -83,11 +84,11 @@ export default function Palace(props: PalaceProps) {
         props.socket.emit('ready');
 
         return () => {
-            props.socket.off('updatePublicData', () => console.log('Unsubscribed from updatePublicData'));
-            props.socket.off('updateData', () => console.log('Unsubscribed from updateData'));
-            props.socket.off('startTurn', () => console.log('Unsubscribed from startTurn'));
-            props.socket.off('completionInterrupt', () => console.log('Unsubscribed from completionInterrupt'));
-            props.socket.off('promptThreeTarget', () => console.log('Unsubscribed from promptThreeTarget'))
+            props.socket.off('updatePublicData', () => logMessage('Unsubscribed from updatePublicData'));
+            props.socket.off('updateData', () => logMessage('Unsubscribed from updateData'));
+            props.socket.off('startTurn', () => logMessage('Unsubscribed from startTurn'));
+            props.socket.off('completionInterrupt', () => logMessage('Unsubscribed from completionInterrupt'));
+            props.socket.off('promptThreeTarget', () => logMessage('Unsubscribed from promptThreeTarget'))
         }
     }, []);
 
@@ -136,13 +137,13 @@ export default function Palace(props: PalaceProps) {
                         chosen = i;
                     }
                     else {
-                        console.log('too many cards selected');
+                        logError('too many cards selected');
                         return; 
                     }
                 }
             }
             if (chosen === -1) {
-                console.log('not enough cards');
+                logError('not enough cards');
                 return;
             }
             props.socket.emit('playHidden', chosen);
@@ -151,7 +152,7 @@ export default function Palace(props: PalaceProps) {
             switch (state) {
                 case Game.SETUP: {
                     if (inds.length < 3) {
-                        console.log('not enough cards');
+                        logError('not enough cards');
                         return;
                     } else {
                         props.socket.emit('setup', inds);
@@ -160,7 +161,7 @@ export default function Palace(props: PalaceProps) {
                 }
                 case Game.IN_TURN: {
                     if (inds.length < 0) {
-                        console.log('not enough cards');
+                        logError('not enough cards');
                         return;
                     } else {
                         props.socket.emit('playCards', inds);
