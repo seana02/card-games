@@ -229,18 +229,23 @@ export class GameState {
         let cardVal = player.hidden[index].value;
         newState.centerPile.add(player.hidden[index]);
         newState.lastPlayed = [player.hidden[index]];
-        player.hidden[index] = null;
 
         // card already moved to center pile
         if (checkCompletes(this.centerPile, cardVal, 0)) {
             newState.centerPile.clear();
+            player.hidden[index] = null;
             return newState;
         } 
 
         if (checkPlayable(newState.centerPile)) {
-            applyEffectsHelper(newState, newState.centerPile.peek(1).value, 1);
+            let value = newState.centerPile.peek(1).value;
+            applyEffectsHelper(newState, value, 1);
+            if (value === 3 || value === 10) {
+                newState.lastPlayed = [player.hidden[index]];
+            }
         }
 
+        player.hidden[index] = null;
         return newState;
     }
 
