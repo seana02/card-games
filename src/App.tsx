@@ -25,13 +25,12 @@ export default function App() {
         setPlayerList(newPlayerList);
     });
 
-    socket.on("join", (roomCreated, players, id) => {
+    socket.on("join", (roomCreated, players) => {
         if (roomCreated) {
             setLeader(true);
         }
         setPlayerList(players);
         setScreen("lobby");
-        setID(id);
     });
 
     socket.on("joinSpectator", () => {
@@ -61,7 +60,6 @@ export default function App() {
             return <Palace
                     name={name}
                     socket={socket}
-                    id={id}
                 />
         default:
             return <Login

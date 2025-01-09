@@ -228,7 +228,6 @@ export class GameState {
         let player = newState.playerList[newState.currentPlayer];
         let cardVal = player.hidden[index].value;
         newState.centerPile.add(player.hidden[index]);
-        newState.lastPlayed = [player.hidden[index]];
         player.hidden[index] = null;
 
         // card already moved to center pile
@@ -237,7 +236,7 @@ export class GameState {
             return newState;
         } 
 
-        if (checkPlayable(newState.centerPile)) {
+        if (checkPlayable(this.centerPile)) {
             applyEffectsHelper(newState, newState.centerPile.peek(1).value, 1);
         }
 
@@ -293,9 +292,10 @@ export class GameState {
   * @param value - the card value played
   */
 function applyEffectsHelper(state: GameState, value: number, count: number) {
+    console.log("applying effects");
     // apply effect
     if (value === 3) {
-        if (state.centerPile.cards[0].value === 3) {
+        if (state.centerPile.length === 0) {
             state.centerPile.clear();
             state.lastPlayed = [];
         } else {
@@ -390,6 +390,7 @@ function checkPlayable(center: Deck, card?: Card): boolean {
     return check(card.value, top);
 
     function check(toPlay: number, prev: number) {
+        console.log("checking if", toPlay, "is playable on", prev);
         if (!prev) return true;
         switch (toPlay) {
             case 3: break;
