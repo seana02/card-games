@@ -66,8 +66,8 @@ export class Deck {
       * Defaults to false if omitted.
       */
     constructor(init = false, jokers = false) {
+        this._deck = [];
         if (init) this.init(jokers);
-        else this._deck = [];
     }
 
     /**
