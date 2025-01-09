@@ -54,32 +54,20 @@ export default function Palace(props: PalaceProps) {
 
     props.socket.on('initialize', id => setID(id));
 
-    props.socket.on('updatePublicData', (players: { name: string, id: number }[]) => {
-        let pList: PlayerListTemplate[] = [];
-        players.forEach((p, i) => {
-            pList.push({
-                name: p.name,
-                id: p.id,
-                displayed: playerList[i]?.displayed || [],
-                inHand: playerList[i]?.inHand || 0,
-            });
-        });
-        setPlayerList(pList);
-    });
-
     props.socket.on('updateData', (data: PalaceData) => {
         if (data.id !== id) logWarning('Sent data id does not match local id');
         setHand(data.cards.map(c => ({ ...c, selected: false })));
         let pList: PlayerListTemplate[] = [];
-        playerList.forEach((p, i) => {
+        for (let i = 0; i < Object.keys(data.shared.names).length; i++) {
             pList.push({
-                name: p.name,
-                id: p.id,
+                name: data.shared.names[i],
+                id: i,
                 displayed: data.shared.displayed[i],
                 inHand: data.shared.count[i],
             });
-        });
+        }
         setPlayerList(pList);
+        console.log('update data', pList);
         setPileCount(data.shared.draw_count);
         setDiscard(data.shared.center);
         setCompletionButton("enabled");

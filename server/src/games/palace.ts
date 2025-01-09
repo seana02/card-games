@@ -44,13 +44,10 @@ export default class Palace {
         this.ready = new Array(players.length).fill(false);
         this.completionBlocked = new Array(players.length).fill(false);
 
-        room.emit('gameStart', "palace");
-
-        room.emit('updatePublicData', this._globalState.playerList.map((p, i) => ({ name: p.name, id: this._globalState.playerList[i].id })));
-
         this._globalState.playerList.forEach((p, i) => {
             p.sock.on('ready', () => {
                 this.ready[p.id] = true;
+
                 console.log('received ready from player', p.id, 'ready array:', this.ready, 'filter:');
                 if (this.ready.filter(b => !b).length === 0) {
                     console.log('initializing');
@@ -64,6 +61,7 @@ export default class Palace {
             p.sock.on('setup', (inds: number[]) => {
                 console.log('received setup from player', p.id);
                 this._globalState = this._globalState.setup(i, inds);
+                console.log('setup sending state', this._globalState.playerList);
                 this.send();
                 let ready = true;
                 for (let i = 0; i < this._globalState.playerList.length && ready; i++) {
@@ -124,10 +122,13 @@ export default class Palace {
             });
 
         });
+
+        room.emit('gameStart', "palace");
     }
 
     send() {
         let shared: Shared = {
+            names: {},
             center: this._globalState.lastPlayed.map(c => ({ suit: c.suit, value: c.value })),
             draw_count: this._globalState.drawPile.length,
             displayed: {},
@@ -138,13 +139,14 @@ export default class Palace {
             shared.displayed[player.id] = [0,1,2].map(v => {
                 if (player.revealed[v]) {
                     return { suit: player.revealed[v].suit, value: player.revealed[v].value };
-                } else if (player.hidden[i]) {
+                } else if (player.hidden[v]) {
                     return { back: 0 };
                 } else {
                     return null;
                 }
             });
-            shared.count[this._globalState.playerList[i].id] = this._globalState.playerList[i].hand.length; 
+            shared.count[player.id] = player.hand.length; 
+            shared.names[player.id] = player.name
         }
         for (let i = 0; i < this._globalState.playerList.length; i++) {
             let player_data: PalaceData = {
@@ -152,6 +154,7 @@ export default class Palace {
                 cards: this._globalState.playerList[i].hand.map(c => ({ suit: c.suit, value: c.value })),
                 shared
             }
+            console.log('sending updateData', player_data.shared.displayed);
             this._globalState.playerList[i].sock.emit('updateData', player_data);
         }
     }
