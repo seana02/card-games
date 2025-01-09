@@ -34,14 +34,14 @@ const ordering: {[value: number]: number} = {
 export default class Palace {
     public _globalState: GameState
     private _room: Room;
-    private ready: boolean[];
+    private readyState: number[];
     private completionBlocked: boolean[];
 
     constructor(room: Room, players: Player[], cardRules: CardEffects[] = defaultEffects) {
         this._room = room;
         if (players.length < 1) throw Error("Requires at least 2 players");
         this._globalState = new GameState(players);
-        this.ready = new Array(players.length).fill(false);
+        this.readyState = new Array(players.length).fill(0);
         this.completionBlocked = new Array(players.length).fill(false);
 
         this._globalState.playerList.forEach((p, i) => {
@@ -51,9 +51,6 @@ export default class Palace {
                 console.log('received ready from player', p.id, 'ready array:', this.ready, 'filter:');
                 if (this.ready.filter(b => !b).length === 0) {
                     console.log('initializing');
-                    this._globalState.playerList.forEach(p => {
-                        p.sock.emit('initialize', p.id);
-                    });
                     this.send();
                 }
             });
@@ -78,6 +75,18 @@ export default class Palace {
                     this._globalState = this._globalState.playCards(inds);
                 }
                 this.completionBlocked.fill(false);
+                this.send();
+                if (this._globalState.threeUser === this._globalState.currentPlayer) {
+                    this._globalState.playerList[this._globalState.currentPlayer].sock.emit('promptThreeTarget');
+                } else {
+                    this._globalState.playerList[this._globalState.currentPlayer].sock.emit('startTurn');
+                }
+            });
+
+            p.sock.on('playHidden', (ind: number) => {
+                if (p.id === this._globalState.currentPlayer) {
+                    this._globalState = this._globalState.playHidden(ind);
+                }
                 this.send();
                 if (this._globalState.threeUser === this._globalState.currentPlayer) {
                     this._globalState.playerList[this._globalState.currentPlayer].sock.emit('promptThreeTarget');

@@ -91,9 +91,12 @@ Game State: {
 ### client to server messages
 - ready
     - sent on first load
+- id received
+    - fixes invalid id sends
 - reveal cards (setup)
 - play card (index: number)
     - check if sender is current player
+- play hidden (index: number)
 - take cards
 - complete
 - target player (player id: number)
