@@ -45,46 +45,27 @@ export default function Palace(props: PalaceProps) {
     const [hidden, setHidden] = useState<({ suit: number, value: number, selected: boolean}|{ back: number, selected: boolean })[]>([]);
     const [state, setState] = useState(Game.SETUP);
     const [playerList, setPlayerList] = useState<PlayerListTemplate[]>([]);
-    const refPlayerList = useRef(playerList);
 
     const [discard, setDiscard] = useState<{ suit: number, value: number }[]>([]);
     const [pileCount, setPileCount] = useState(0);
 
     const [completionButton, setCompletionButton] = useState("enabled");
 
-    // update refPlayerList when playerList updates
-    useEffect(() => { refPlayerList.current = playerList; }, [playerList]);
-
     // sets listeners emits ready only on first load
     useEffect(() => {
-        props.socket.on('updatePublicData', (players: { name: string, id: number }[]) => {
-            let pList: PlayerListTemplate[] = [];
-            players.forEach((p, i) => {
-                pList.push({
-                    name: p.name,
-                    id: p.id,
-                    // displayed: refPlayerList.current[i]?.displayed || [],
-                    displayed: [],
-                    // inHand: refPlayerList.current[i]?.inHand || 0,
-                    inHand: 0,
-                });
-            });
-            setPlayerList(pList);
-        });
-
         props.socket.on('updateData', (data: PalaceData) => {
             if (data.id !== props.id) console.log('ERROR: incorrect data sent');
             setHand(data.cards.map(c => ({ ...c, selected: false })));
             setHidden(data.shared.displayed[props.id].map(c => ({ ...c, selected: false })));
             let pList: PlayerListTemplate[] = [];
-            refPlayerList.current.forEach((p, i) => {
+            for (let i = 0; i < Object.keys(data.shared.names).length; i++) {
                 pList.push({
-                    name: p.name,
-                    id: p.id,
+                    name: data.shared.names[i],
+                    id: i,
                     displayed: data.shared.displayed[i],
                     inHand: data.shared.count[i],
                 });
-            });
+            }
             setPlayerList(pList);
             setPileCount(data.shared.draw_count);
             setDiscard(data.shared.center);
