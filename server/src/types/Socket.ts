@@ -22,7 +22,7 @@ export type ServerToClientEvents = {
     // playThree: () => void;
 
     // Palace
-    initialize: (id: number) => void;
+    updatePublicData: (players: {name: string, id: number}[]) => void;
     updateData: (data: PalaceData) => void;
     startTurn: () => void;
     completionInterrupt: () => void;

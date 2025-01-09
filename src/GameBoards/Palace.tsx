@@ -52,26 +52,48 @@ export default function Palace(props: PalaceProps) {
 
     const [completionButton, setCompletionButton] = useState("enabled");
 
-    props.socket.on('initialize', id => setID(id));
+    // update refPlayerList when playerList updates
+    useEffect(() => { refPlayerList.current = playerList; }, [playerList]);
 
-    props.socket.on('updateData', (data: PalaceData) => {
-        if (data.id !== id) logWarning('Sent data id does not match local id');
-        setHand(data.cards.map(c => ({ ...c, selected: false })));
-        let pList: PlayerListTemplate[] = [];
-        for (let i = 0; i < Object.keys(data.shared.names).length; i++) {
-            pList.push({
-                name: data.shared.names[i],
-                id: i,
-                displayed: data.shared.displayed[i],
-                inHand: data.shared.count[i],
+    // sets listeners emits ready only on first load
+    useEffect(() => {
+        props.socket.on('updatePublicData', (players: { name: string, id: number }[]) => {
+            let pList: PlayerListTemplate[] = [];
+            players.forEach((p, i) => {
+                pList.push({
+                    name: p.name,
+                    id: p.id,
+                    // displayed: refPlayerList.current[i]?.displayed || [],
+                    displayed: [],
+                    // inHand: refPlayerList.current[i]?.inHand || 0,
+                    inHand: 0,
+                });
             });
-        }
-        setPlayerList(pList);
-        console.log('update data', pList);
-        setPileCount(data.shared.draw_count);
-        setDiscard(data.shared.center);
-        setCompletionButton("enabled");
-    });
+            setPlayerList(pList);
+        });
+
+        props.socket.on('updateData', (data: PalaceData) => {
+            if (data.id !== props.id) console.log('ERROR: incorrect data sent');
+            setHand(data.cards.map(c => ({ ...c, selected: false })));
+            setHidden(data.shared.displayed[props.id].map(c => ({ ...c, selected: false })));
+            let pList: PlayerListTemplate[] = [];
+            refPlayerList.current.forEach((p, i) => {
+                pList.push({
+                    name: p.name,
+                    id: p.id,
+                    displayed: data.shared.displayed[i],
+                    inHand: data.shared.count[i],
+                });
+            });
+            setPlayerList(pList);
+            setPileCount(data.shared.draw_count);
+            setDiscard(data.shared.center);
+            setCompletionButton("enabled");
+        });
+
+        props.socket.on('startTurn', () => {
+            setState(Game.IN_TURN);
+        });
 
         props.socket.on('completionInterrupt', () => setState(Game.OUT_TURN));
 
@@ -251,16 +273,16 @@ export default function Palace(props: PalaceProps) {
     function getThreeMenu() {
         let content: React.JSX.Element[] = [];
         playerList.forEach((p, i) => {
-            if (id == p.id) return;
-            let minicards = [0,1,2].map(i => <div className="display-card">{<Card card={p.displayed[i]} className={"small"} onClick={() => { }} />}</div>);
+            if (props.id == p.id) return;
             content.push(
                 <div className="player-card" onClick={() => targetPlayer(i)}>
                     {p.name}
-                    <div style={{ width: "8px" }}></div>
                     <div className="display-card-group">
                         <div className="display-card">{p.inHand || 0}</div>
                         <div style={{ width: "8px" }}></div>
-                        {minicards}
+                        <div className="display-card">{<Card card={p.displayed[0]} className={"small"} onClick={() => { }} />}</div>
+                        <div className="display-card">{<Card card={p.displayed[1]} className={"small"} onClick={() => { }} />}</div>
+                        <div className="display-card">{<Card card={p.displayed[2]} className={"small"} onClick={() => { }} />}</div>
                     </div>
                 </div>
             );
@@ -298,16 +320,18 @@ export default function Palace(props: PalaceProps) {
                 return "disabled";
         }
     } 
+
+    function isHiddenShown() {
+        if (!playerList) return false;
+        if (!playerList[props.id]) return false;
+        if (hand.length !== 0) return false;
+        for (let i = 0; i < 3; i++) {
+            if (playerList[props.id].displayed[i] && "back" in playerList[props.id].displayed[i]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 }
 
-function logMessage(message: string) {
-    console.log(`%c[Palace]%c: ${message}`, "color: blue", "color: initial");
-}
-
-function logWarning(message: string) {
-    console.log(`%c[WARN]%c: ${message}`, "color: yellow", "color: initial");
-}
-
-function logError(message: string) {
-    console.log(`%c[ERROR]%c: ${message}`, "color: red", "color: initial");
-}

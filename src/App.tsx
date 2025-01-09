@@ -14,7 +14,8 @@ export default function App() {
     const [room, setRoom] = useState(0);
     const [roomLeader, setLeader] = useState(false);
     const [playerList, setPlayerList] = useState<Array<{ name: string, leader: boolean }>>([]);
-    const [socket, _]: [Socket<socketTypes.ServerToClientEvents, socketTypes.ClientToServerEvents>, any] = useState(io(import.meta.env.url || 'http://localhost:3000', {
+    const [id, setID] = useState(-1);
+    const [socket, _]: [Socket<socketTypes.ServerToClientEvents, socketTypes.ClientToServerEvents>, any] = useState(io('http://localhost:3000', {
         autoConnect: false
     }));
 

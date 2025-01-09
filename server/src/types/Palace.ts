@@ -20,7 +20,6 @@ export type GameState = {
     threeUser: number,
 }
 export type Shared = {
-    names: { [id: number]: string }
     center: { suit: number, value: number }[],
     draw_count: number,
     displayed: {[id: number]: ({ suit: number, value: number } | { back: number })[]},
