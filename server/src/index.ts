@@ -14,7 +14,10 @@ const io = new Server<
     socketTypes.SocketData
 >(httpServer, {
     cors: {
-        origin: ['http://localhost:5173', 'https://seana02.github.io/card-games'],
+        origin: [
+            'https://seana02.github.io',
+            'http://localhost:5173',
+        ],
         methods: ['GET', 'POST']
     }
 });
