@@ -136,6 +136,8 @@ export class GameState {
 
         indices.sort((a,b) => b - a);
 
+        console.log("player", this.currentPlayer, "playing cards:", indices.reduce((x, i) => x + `{suit: ${player.hand[i].suit}, value: ${player.hand[i].value}} `, ""));
+
         let newState = cloneState(this);
         player = newState.playerList[newState.currentPlayer];
 
@@ -165,6 +167,9 @@ export class GameState {
             player.revealed = [];
         }
 
+        if (!playerInPlay(newState.playerList[newState.currentPlayer]) && checkPlayable(newState.centerPile)) {
+            newState.currentPlayer = getNextPlayer(newState.playerList, newState.currentPlayer);
+        }
         return newState;
     }
 
@@ -223,12 +228,16 @@ export class GameState {
         if (!this.playerList[this.currentPlayer].hidden[index]) return this;
         // stack is invalid
         if (!checkPlayable(this.centerPile)) return this;
+        // top of stack is 3
+        if (this.centerPile.peek(1)?.value === 3) return this;
         
         let newState = cloneState(this);
         let player = newState.playerList[newState.currentPlayer];
         let cardVal = player.hidden[index].value;
         newState.centerPile.add(player.hidden[index]);
         newState.lastPlayed = [player.hidden[index]];
+
+        console.log("player", this.currentPlayer, "playing hidden card:", `{suit: ${player.hidden[index].suit}, value: ${player.hidden[index].value}} `);
 
         // card already moved to center pile
         if (checkCompletes(this.centerPile, cardVal, 0)) {
@@ -246,6 +255,9 @@ export class GameState {
         }
 
         player.hidden[index] = null;
+        if (!playerInPlay(newState.playerList[newState.currentPlayer]) && checkPlayable(newState.centerPile)) {
+            newState.currentPlayer = getNextPlayer(newState.playerList, newState.currentPlayer);
+        }
         return newState;
     }
 
@@ -451,7 +463,6 @@ function getNextPlayer(playerList: PalacePlayer[], currentPlayer: number): numbe
     while (!playerInPlay(playerList[currentPlayer])) {
         currentPlayer = (currentPlayer + 1) % playerList.length;
     }
-    console.log(currentPlayer, 'is in play with', playerList[currentPlayer].hand.length, 'in hand and', playerList[currentPlayer].hidden.length, 'in hidden');
     return currentPlayer;
 }
 
